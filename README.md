@@ -26,12 +26,34 @@ https://reminderrocket.vercel.app
 
 ## ⚙️ Environment Variables
 
-To run this project, you will need to add the following variables to your `.env` file:
+Copy `.env.example` to `.env`, then fill in:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 RESEND_API_KEY=your_resend_key
+RESEND_FROM_EMAIL=noreply@reminderrocket.com
 TWILIO_ACCOUNT_SID=your_twilio_sid
 TWILIO_AUTH_TOKEN=your_twilio_token
 TWILIO_PHONE_NUMBER=your_twilio_number
+APP_BASE_URL=http://localhost:3000
+```
+
+## 🚀 Local Setup
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Copy `.env.example` to `.env` and fill in values.
+3. Run the Supabase SQL in `supabase/schema.sql`.
+4. Deploy the Edge Function in `supabase/functions/send-reminders`.
+5. Start the app:
+   ```bash
+   npm run dev
+   ```
+
+## 🧩 Supabase Notes
+
+- SQL setup: see `supabase/schema.sql` and `supabase/README.md`.
+- Edge Function: see `supabase/functions/send-reminders/README.md`.

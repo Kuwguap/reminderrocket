@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatZodErrors, reminderSchema } from "../lib/validation";
 
 const quotes = [
   "Mission focus beats motivation every time.",
@@ -32,12 +33,34 @@ const frequencyOptions = [
   },
 ];
 
+const stopOptions = [
+  { value: "time", label: "End at a specific time" },
+  { value: "proof", label: "Require picture proof" },
+];
+
 export default function Home() {
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [recipientMode, setRecipientMode] = useState("me");
   const [frequency, setFrequency] = useState("hourly");
   const [startTiming, setStartTiming] = useState("now");
   const [specialRecipientName, setSpecialRecipientName] = useState("");
+  const [message, setMessage] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [customFrequencyValue, setCustomFrequencyValue] = useState("");
+  const [customFrequencyUnit, setCustomFrequencyUnit] = useState("minutes");
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [stopCondition, setStopCondition] = useState("time");
+  const [stopAt, setStopAt] = useState("");
+  const [formErrors, setFormErrors] = useState({});
+  const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reminders, setReminders] = useState([]);
+  const [isLoadingReminders, setIsLoadingReminders] = useState(true);
+  const [listError, setListError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [uploadingId, setUploadingId] = useState(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -46,78 +69,252 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    loadReminders();
+  }, []);
+
+  async function loadReminders() {
+    setIsLoadingReminders(true);
+    setListError("");
+    try {
+      const response = await fetch("/api/reminders?status=active");
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || "Unable to load reminders.");
+      }
+      setReminders(payload.reminders ?? []);
+    } catch (error) {
+      setListError("Unable to load reminders.");
+    } finally {
+      setIsLoadingReminders(false);
+    }
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setFormErrors({});
+    setSubmitError("");
+    setSubmitSuccess("");
+
+    const startTime =
+      startTiming === "now"
+        ? new Date()
+        : scheduledAt
+        ? new Date(scheduledAt)
+        : null;
+    const stopTime =
+      stopCondition === "time" && stopAt ? new Date(stopAt) : null;
+
+    const payload = {
+      message: message.trim(),
+      recipient_name: (recipientMode === "me" ? "You" : specialRecipientName).trim(),
+      phone,
+      email,
+      frequency_type: frequency,
+      frequency_value: frequency === "custom" ? customFrequencyValue : null,
+      frequency_unit: frequency === "custom" ? customFrequencyUnit : null,
+      start_time: startTime ? startTime.toISOString() : "",
+      stop_condition: stopCondition,
+      stop_at: stopTime ? stopTime.toISOString() : null,
+    };
+
+    const parsed = reminderSchema.safeParse(payload);
+    if (!parsed.success) {
+      setFormErrors(formatZodErrors(parsed.error));
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(parsed.data),
+      });
+      const responseBody = await response.json();
+
+      if (!response.ok) {
+        if (responseBody?.errors) {
+          setFormErrors(responseBody.errors);
+        }
+        setSubmitError(responseBody?.error || "Unable to launch reminder.");
+        return;
+      }
+
+      setSubmitSuccess("Reminder launched.");
+      setMessage("");
+      setPhone("");
+      setEmail("");
+      setSpecialRecipientName("");
+      setFrequency("hourly");
+      setCustomFrequencyValue("");
+      setCustomFrequencyUnit("minutes");
+      setStartTiming("now");
+      setScheduledAt("");
+      setStopCondition("time");
+      setStopAt("");
+      setRecipientMode("me");
+      await loadReminders();
+    } catch (error) {
+      setSubmitError("Something went wrong while creating the reminder.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleStopReminder(reminderId) {
+    setActionError("");
+    try {
+      const response = await fetch(`/api/reminders/${reminderId}/stop`, {
+        method: "POST",
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || "Unable to stop reminder.");
+      }
+      await loadReminders();
+    } catch (error) {
+      setActionError("Unable to stop reminder.");
+    }
+  }
+
+  async function handleProofUpload(reminderId, file) {
+    if (!file) {
+      return;
+    }
+
+    setActionError("");
+    setUploadingId(reminderId);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch(`/api/reminders/${reminderId}/proof`, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || "Unable to upload proof.");
+      }
+      await loadReminders();
+    } catch (error) {
+      setActionError("Unable to upload proof.");
+    } finally {
+      setUploadingId(null);
+    }
+  }
+
   const primaryButtonClass =
-    "cursor-pointer rounded-full bg-secondary px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary";
+    "cursor-pointer rounded-full bg-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-70";
   const primaryButtonSmallClass =
-    "cursor-pointer rounded-full bg-secondary px-4 py-2 text-xs font-semibold text-white transition hover:bg-secondary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary";
+    "cursor-pointer rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-70";
   const segmentedButtonClass =
-    "cursor-pointer rounded-full border px-4 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary";
+    "cursor-pointer rounded-full border px-4 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500";
   const isForMe = recipientMode === "me";
   const recipientName = isForMe ? "You" : specialRecipientName;
 
+  const renderError = (field) =>
+    formErrors[field] ? (
+      <span className="text-xs text-rose-500">{formErrors[field]}</span>
+    ) : null;
+
+  const formatDateTime = (value) => {
+    if (!value) {
+      return "—";
+    }
+    return new Date(value).toLocaleString();
+  };
+
+  const formatFrequency = (reminder) => {
+    if (reminder.frequency_type === "custom") {
+      return `Every ${reminder.frequency_value} ${reminder.frequency_unit}`;
+    }
+    const option = frequencyOptions.find(
+      (item) => item.id === reminder.frequency_type
+    );
+    return option?.label ?? reminder.frequency_type;
+  };
+
+  const visibleReminders = reminders.slice(0, 2);
+  const hiddenReminderCount = Math.max(reminders.length - visibleReminders.length, 0);
+
   return (
-    <main className="min-h-screen bg-primary">
-      <div className="mx-auto max-w-6xl px-6 py-12">
-        <header className="space-y-4">
-          <p className="inline-flex items-center gap-2 rounded-full border border-secondary px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
+    <main className="h-screen overflow-hidden bg-white">
+      <div className="mx-auto flex h-full max-w-6xl flex-col gap-6 px-6 py-6">
+        <header className="space-y-2">
+          <p className="inline-flex items-center gap-2 rounded-full border border-orange-400 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
             Reminder Rocket
           </p>
-          <h1 className="text-4xl font-semibold text-slate-900 sm:text-5xl">
+          <h1 className="text-3xl font-semibold text-slate-900 sm:text-4xl">
             Start now, stay on track.
           </h1>
-          <p className="max-w-2xl text-lg text-slate-600">
-            Launch reminders the moment you need them, keep them persistent, and
-            end only when the mission is complete.
+          <p className="max-w-2xl text-sm text-slate-600">
+            Launch reminders fast, stay accountable, and finish the mission.
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              className={primaryButtonClass}
-            >
+            <button type="button" className={primaryButtonSmallClass}>
               Start now
             </button>
-            <button
-              type="button"
-              className={primaryButtonClass}
-            >
+            <button type="button" className={primaryButtonSmallClass}>
               Schedule for later
             </button>
+            <a
+              href="/settings"
+              className="rounded-full border border-orange-300 px-4 py-2 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600"
+            >
+              Settings
+            </a>
           </div>
         </header>
 
-        <section className="mt-12 grid gap-8 lg:grid-cols-[1.1fr,0.9fr]">
-          <div className="rounded-3xl border border-secondary/20 bg-white p-6 shadow-sm">
+        <section className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[1.15fr,0.85fr]">
+          <div className="rounded-3xl border border-orange-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-slate-900">
                 Create a reminder
               </h2>
-              <span className="rounded-full border border-secondary px-3 py-1 text-xs font-semibold text-secondary">
+              <span className="rounded-full border border-orange-400 px-3 py-1 text-xs font-semibold text-orange-500">
                 Start now
               </span>
             </div>
 
-            <form className="mt-6 grid gap-4">
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
+            <form className="mt-4 grid gap-3" onSubmit={handleSubmit}>
+              {submitError ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-600">
+                  {submitError}
+                </div>
+              ) : null}
+              {submitSuccess ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-600">
+                  {submitSuccess}
+                </div>
+              ) : null}
+
+              <label className="grid gap-1 text-xs font-medium text-slate-700">
                 Reminder message
                 <textarea
-                  rows={4}
+                  rows={3}
                   placeholder="Remind me to..."
-                  className="w-full resize-none rounded-2xl border border-secondary/20 px-4 py-3 text-sm text-slate-900 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary"
+                  value={message}
+                  onChange={(event) => setMessage(event.target.value)}
+                  className="w-full resize-none rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
+                {renderError("message")}
               </label>
-              <div className="grid gap-3 rounded-2xl border border-secondary/20 px-4 py-4">
+
+              <div className="grid gap-2 rounded-2xl border border-orange-200 px-3 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-xs font-semibold text-slate-900">
                     Who are we reminding?
                   </p>
-                  <div className="flex items-center gap-2 rounded-full border border-secondary/20 bg-white p-1">
+                  <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-white p-1">
                     <button
                       type="button"
                       onClick={() => setRecipientMode("me")}
                       aria-pressed={isForMe}
                       className={`${segmentedButtonClass} ${
                         isForMe
-                          ? "border-secondary bg-secondary text-white"
+                          ? "border-orange-500 bg-orange-500 text-white"
                           : "border-transparent text-slate-600 hover:text-slate-900"
                       }`}
                     >
@@ -129,7 +326,7 @@ export default function Home() {
                       aria-pressed={!isForMe}
                       className={`${segmentedButtonClass} ${
                         !isForMe
-                          ? "border-secondary bg-secondary text-white"
+                          ? "border-orange-500 bg-orange-500 text-white"
                           : "border-transparent text-slate-600 hover:text-slate-900"
                       }`}
                     >
@@ -137,12 +334,12 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                <label className="grid gap-1 text-xs font-medium text-slate-700">
                   Recipient name
                   <input
                     type="text"
                     placeholder={isForMe ? "You" : "Someone special"}
-                    className="w-full rounded-2xl border border-secondary/20 px-4 py-3 text-sm text-slate-900 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary"
+                    className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     disabled={isForMe}
                     value={recipientName}
                     onChange={(event) => setSpecialRecipientName(event.target.value)}
@@ -150,29 +347,35 @@ export default function Home() {
                 </label>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="grid gap-1 text-xs font-medium text-slate-700">
                   Phone
                   <input
                     type="tel"
                     placeholder="(555) 123-4567"
-                    className="w-full rounded-2xl border border-secondary/20 px-4 py-3 text-sm text-slate-900 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary"
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                    className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
+                  {renderError("phone")}
                 </label>
 
-                <label className="grid gap-2 text-sm font-medium text-slate-700">
+                <label className="grid gap-1 text-xs font-medium text-slate-700">
                   Email
                   <input
                     type="email"
                     placeholder="rocket@launch.com"
-                    className="w-full rounded-2xl border border-secondary/20 px-4 py-3 text-sm text-slate-900 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
+                  {renderError("email")}
                 </label>
               </div>
 
-              <div className="grid gap-3 text-sm font-medium text-slate-700">
+              <div className="grid gap-2 text-xs font-medium text-slate-700">
                 Frequency
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {frequencyOptions.map((option) => {
                     const isActive = frequency === option.id;
                     return (
@@ -181,108 +384,259 @@ export default function Home() {
                         type="button"
                         onClick={() => setFrequency(option.id)}
                         aria-pressed={isActive}
-                        className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${
+                        className={`rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
                           isActive
-                            ? "border-secondary bg-secondary/10 text-secondary"
-                            : "border-secondary/20 text-slate-700 hover:border-secondary/40"
+                            ? "border-orange-400 bg-orange-50 text-orange-500"
+                            : "border-orange-200 text-slate-700 hover:border-orange-300"
                         }`}
                       >
-                        <span className="block text-sm font-semibold">
+                        <span className="block text-xs font-semibold">
                           {option.label}
-                        </span>
-                        <span className="mt-1 block text-xs text-slate-500">
-                          {option.detail}
                         </span>
                       </button>
                     );
                   })}
                 </div>
                 {frequency === "custom" && (
-                  <div className="grid gap-3 sm:grid-cols-[1fr,140px]">
+                  <div className="grid gap-2 sm:grid-cols-[1fr,120px]">
                     <input
                       type="number"
                       min={5}
                       step={5}
                       placeholder="30"
-                      className="w-full rounded-2xl border border-secondary/20 px-4 py-3 text-sm text-slate-900 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary"
+                      value={customFrequencyValue}
+                      onChange={(event) =>
+                        setCustomFrequencyValue(event.target.value)
+                      }
+                      className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
-                    <select className="w-full rounded-2xl border border-secondary/20 px-4 py-3 text-sm text-slate-900 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary">
-                      <option>Minutes</option>
-                      <option>Hours</option>
-                      <option>Days</option>
+                    <select
+                      value={customFrequencyUnit}
+                      onChange={(event) =>
+                        setCustomFrequencyUnit(event.target.value)
+                      }
+                      className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    >
+                      <option value="minutes">Minutes</option>
+                      <option value="hours">Hours</option>
+                      <option value="days">Days</option>
                     </select>
                   </div>
                 )}
+                {renderError("frequency_value")}
               </div>
 
-              <div className="grid gap-2 text-sm font-medium text-slate-700">
-                Start time
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setStartTiming("now")}
-                    className={`${primaryButtonSmallClass} ${
-                      startTiming === "now" ? "" : "opacity-70"
-                    }`}
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-1 text-xs font-medium text-slate-700">
+                  Start time
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setStartTiming("now")}
+                      className={`${primaryButtonSmallClass} ${
+                        startTiming === "now" ? "" : "opacity-70"
+                      }`}
+                    >
+                      Start now
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStartTiming("schedule")}
+                      className={`${primaryButtonSmallClass} ${
+                        startTiming === "schedule" ? "" : "opacity-70"
+                      }`}
+                    >
+                      Schedule
+                    </button>
+                  </div>
+                  {startTiming === "schedule" ? (
+                    <label className="grid gap-1 text-xs font-medium text-slate-600">
+                      Scheduled start
+                      <input
+                        type="datetime-local"
+                        value={scheduledAt}
+                        onChange={(event) => setScheduledAt(event.target.value)}
+                        className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      {renderError("start_time")}
+                    </label>
+                  ) : null}
+                </div>
+
+                <div className="grid gap-1 text-xs font-medium text-slate-700">
+                  Stop condition
+                  <select
+                    value={stopCondition}
+                    onChange={(event) => setStopCondition(event.target.value)}
+                    className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   >
-                    Start now
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStartTiming("schedule")}
-                    className={`${primaryButtonSmallClass} ${
-                      startTiming === "schedule" ? "" : "opacity-70"
-                    }`}
-                  >
-                    Schedule
-                  </button>
+                    {stopOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  {stopCondition === "time" ? (
+                    <label className="grid gap-1 text-xs font-medium text-slate-600">
+                      Stop time
+                      <input
+                        type="datetime-local"
+                        value={stopAt}
+                        onChange={(event) => setStopAt(event.target.value)}
+                        className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      {renderError("stop_at")}
+                    </label>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      Proof uploads after creation.
+                    </p>
+                  )}
                 </div>
               </div>
-
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                Stop condition
-                <select className="w-full rounded-2xl border border-secondary/20 px-4 py-3 text-sm text-slate-900 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary">
-                  <option>End at a specific time</option>
-                  <option>Require picture proof</option>
-                </select>
-              </label>
 
               <button
                 type="submit"
                 className={`mt-2 ${primaryButtonClass}`}
+                disabled={isSubmitting}
               >
-                Launch reminder
+                {isSubmitting ? "Launching..." : "Launch reminder"}
               </button>
             </form>
+
+            <div className="mt-4 border-t border-orange-200 pt-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-slate-900">
+                  Active reminders
+                </h3>
+                <button
+                  type="button"
+                  onClick={loadReminders}
+                  className={primaryButtonSmallClass}
+                >
+                  Refresh
+                </button>
+              </div>
+              {listError ? (
+                <p className="mt-2 text-xs text-rose-500">{listError}</p>
+              ) : null}
+              {actionError ? (
+                <p className="mt-2 text-xs text-rose-500">{actionError}</p>
+              ) : null}
+              {isLoadingReminders ? (
+                <p className="mt-3 text-sm text-slate-500">
+                  Loading reminders...
+                </p>
+              ) : reminders.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-500">
+                  No active reminders yet.
+                </p>
+              ) : (
+                <div className="mt-3 grid gap-3">
+                  {visibleReminders.map((reminder) => (
+                    <div
+                      key={reminder.id}
+                      className="rounded-2xl border border-orange-200 p-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {reminder.message}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Recipient: {reminder.recipient_name || "Recipient"}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Starts: {formatDateTime(reminder.start_time)}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Next run: {formatDateTime(reminder.next_run_at)}
+                          </p>
+                          {reminder.stop_condition === "time" ? (
+                            <p className="text-xs text-slate-500">
+                              Stops: {formatDateTime(reminder.stop_at)}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-slate-500">
+                              Stop condition: Proof required
+                            </p>
+                          )}
+                          {reminder.proof_url ? (
+                            <p className="text-xs text-emerald-600">
+                              Proof uploaded.
+                            </p>
+                          ) : null}
+                        </div>
+                        {reminder.stop_condition === "proof" &&
+                        !reminder.proof_url ? null : (
+                          <button
+                            type="button"
+                            onClick={() => handleStopReminder(reminder.id)}
+                            className={primaryButtonSmallClass}
+                          >
+                            Stop
+                          </button>
+                        )}
+                      </div>
+
+                      {reminder.stop_condition === "proof" &&
+                      !reminder.proof_url ? (
+                        <div className="mt-3 grid gap-2">
+                          <p className="text-xs text-slate-500">
+                            Upload proof to complete this reminder.
+                          </p>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(event) =>
+                              handleProofUpload(
+                                reminder.id,
+                                event.target.files?.[0]
+                              )
+                            }
+                            className="text-xs text-slate-600"
+                          />
+                          {uploadingId === reminder.id ? (
+                            <p className="text-xs text-slate-500">
+                              Uploading...
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                  {hiddenReminderCount > 0 ? (
+                    <p className="text-xs text-slate-500">
+                      Showing latest 2 of {reminders.length} reminders.
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
           </div>
 
-          <aside className="rounded-3xl border border-secondary/20 bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">
+          <aside className="rounded-3xl border border-orange-200 bg-white p-5 shadow-sm">
+            <h3 className="text-base font-semibold text-slate-900">
               What stays in orbit
             </h3>
-            <div className="mt-4 rounded-2xl border border-secondary/20 bg-secondary/5 px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
+            <div className="mt-3 rounded-2xl border border-orange-200 bg-orange-50 px-3 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
                 Mission control
               </p>
-              <p className="mt-2 text-base font-semibold text-slate-900">
+              <p className="mt-2 text-sm font-semibold text-slate-900">
                 "{quotes[quoteIndex]}"
               </p>
               <p className="mt-2 text-xs text-slate-500">
                 Rotating quotes update every few seconds.
               </p>
             </div>
-            <ul className="mt-6 grid gap-4 text-sm text-slate-600">
-              <li className="rounded-2xl border border-secondary/30 px-4 py-3">
+            <ul className="mt-4 grid gap-3 text-xs text-slate-600">
+              <li className="rounded-2xl border border-orange-300 px-3 py-2">
                 Dual-channel delivery via SMS and email.
               </li>
-              <li className="rounded-2xl border border-secondary/30 px-4 py-3">
+              <li className="rounded-2xl border border-orange-300 px-3 py-2">
                 Flexible recipients for yourself or someone special.
-              </li>
-              <li className="rounded-2xl border border-secondary/30 px-4 py-3">
-                Stop conditions that require picture proof.
-              </li>
-              <li className="rounded-2xl border border-secondary/30 px-4 py-3">
-                Custom reminder frequencies to match your schedule.
               </li>
             </ul>
           </aside>
