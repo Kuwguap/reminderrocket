@@ -10,14 +10,26 @@ export async function POST(request, { params }) {
   }
 
   const authClient = createSupabaseAuthClient();
-  const supabase = createSupabaseServerClient();
+  let supabase;
+  try {
+    supabase = createSupabaseServerClient();
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Supabase server configuration is missing." },
+      { status: 500 }
+    );
+  }
   const now = new Date().toISOString();
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("client_id");
 
-  const {
-    data: { user },
-  } = await authClient.auth.getUser();
+  let user = null;
+  if (authClient) {
+    const {
+      data: { user: authUser },
+    } = await authClient.auth.getUser();
+    user = authUser ?? null;
+  }
 
   if (!user && !clientId) {
     return NextResponse.json(

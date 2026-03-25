@@ -89,14 +89,26 @@ async function sendConfirmationEmail(reminder) {
 
 export async function GET(request) {
   const authClient = createSupabaseAuthClient();
-  const supabase = createSupabaseServerClient();
+  let supabase;
+  try {
+    supabase = createSupabaseServerClient();
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Supabase server configuration is missing." },
+      { status: 500 }
+    );
+  }
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
   const clientId = searchParams.get("client_id");
 
-  const {
-    data: { user },
-  } = await authClient.auth.getUser();
+  let user = null;
+  if (authClient) {
+    const {
+      data: { user: authUser },
+    } = await authClient.auth.getUser();
+    user = authUser ?? null;
+  }
 
   let query = supabase
     .from("reminders")
@@ -127,7 +139,15 @@ export async function GET(request) {
 
 export async function POST(request) {
   const authClient = createSupabaseAuthClient();
-  const supabase = createSupabaseServerClient();
+  let supabase;
+  try {
+    supabase = createSupabaseServerClient();
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Supabase server configuration is missing." },
+      { status: 500 }
+    );
+  }
 
   let payload = null;
   try {
@@ -148,9 +168,13 @@ export async function POST(request) {
   }
 
   const data = parsed.data;
-  const {
-    data: { user },
-  } = await authClient.auth.getUser();
+  let user = null;
+  if (authClient) {
+    const {
+      data: { user: authUser },
+    } = await authClient.auth.getUser();
+    user = authUser ?? null;
+  }
 
   const clientId = data.client_id;
   if (!user && !clientId) {

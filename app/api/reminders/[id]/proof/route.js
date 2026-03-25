@@ -11,12 +11,25 @@ export async function POST(request, { params }) {
   }
 
   const authClient = createSupabaseAuthClient();
+  let supabase;
+  try {
+    supabase = createSupabaseServerClient();
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Supabase server configuration is missing." },
+      { status: 500 }
+    );
+  }
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("client_id");
 
-  const {
-    data: { user },
-  } = await authClient.auth.getUser();
+  let user = null;
+  if (authClient) {
+    const {
+      data: { user: authUser },
+    } = await authClient.auth.getUser();
+    user = authUser ?? null;
+  }
 
   if (!user && !clientId) {
     return NextResponse.json(
@@ -35,7 +48,6 @@ export async function POST(request, { params }) {
     );
   }
 
-  const supabase = createSupabaseServerClient();
   let reminderQuery = supabase
     .from("reminders")
     .select("id, stop_condition, status")
