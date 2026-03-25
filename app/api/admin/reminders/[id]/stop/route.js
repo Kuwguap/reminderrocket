@@ -16,8 +16,20 @@ function getSupabaseClient() {
   });
 }
 
+function extractPassword(request) {
+  const headerPassword = request.headers.get("x-admin-password")?.trim();
+  if (headerPassword) {
+    return headerPassword;
+  }
+  const authHeader = request.headers.get("authorization")?.trim();
+  if (authHeader?.toLowerCase().startsWith("bearer ")) {
+    return authHeader.slice(7).trim();
+  }
+  return authHeader || "";
+}
+
 function isAuthorized(request) {
-  const password = request.headers.get("x-admin-password")?.trim();
+  const password = extractPassword(request);
   return password === ADMIN_PASSWORD;
 }
 

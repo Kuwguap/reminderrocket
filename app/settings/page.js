@@ -331,6 +331,16 @@ export default function SettingsPage() {
                         Channel:{" "}
                         {reminder.phone ? "SMS" : reminder.email ? "Email" : "—"}
                       </p>
+                      {reminder.email ? (
+                        <p className="text-xs text-slate-500">
+                          Email: {reminder.email}
+                        </p>
+                      ) : null}
+                      {reminder.phone ? (
+                        <p className="text-xs text-slate-500">
+                          Phone: {reminder.phone}
+                        </p>
+                      ) : null}
                       <p className="text-xs text-slate-500">
                         Frequency: {formatFrequency(reminder)}
                       </p>
