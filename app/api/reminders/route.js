@@ -260,12 +260,10 @@ export async function POST(request) {
 
     if (data.phone && hasKlaviyo) {
       try {
-        const externalId = user ? user.id : clientId;
         await subscribeSmsProfile({
           apiKey: process.env.KLAVIYO_API_KEY,
           email: data.email || null,
           phoneNumber: data.phone,
-          externalId,
           listId: klaviyoListId,
         });
       } catch (error) {

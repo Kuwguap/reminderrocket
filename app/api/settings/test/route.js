@@ -73,7 +73,6 @@ export async function POST(request) {
           apiKey: process.env.KLAVIYO_API_KEY,
           email: email || null,
           phoneNumber: phone,
-          externalId,
           listId: process.env.KLAVIYO_LIST_ID || null,
         });
         await sendSmsEvent({
