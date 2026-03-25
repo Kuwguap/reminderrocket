@@ -61,7 +61,12 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const reminderId = params?.id;
+  let reminderId = params?.id;
+  if (!reminderId) {
+    const pathname = new URL(request.url).pathname;
+    const match = pathname.match(/\/api\/admin\/reminders\/([^/]+)\/stop$/);
+    reminderId = match?.[1] ?? null;
+  }
   if (!reminderId) {
     return NextResponse.json({ error: "Missing reminder id." }, { status: 400 });
   }
