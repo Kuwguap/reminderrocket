@@ -37,8 +37,13 @@ export default function SettingsPage() {
     }
     setIsAdminLoading(true);
     try {
+      const adminHeaders = {
+        "x-admin-password": adminPassword,
+        Authorization: `Bearer ${adminPassword}`,
+      };
       const response = await fetch("/api/admin/reminders", {
-        headers: { "x-admin-password": adminPassword },
+        headers: adminHeaders,
+        cache: "no-store",
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -57,8 +62,13 @@ export default function SettingsPage() {
     setIsAdminRefreshing(true);
     setAdminListError("");
     try {
+      const adminHeaders = {
+        "x-admin-password": adminPassword,
+        Authorization: `Bearer ${adminPassword}`,
+      };
       const response = await fetch("/api/admin/reminders", {
-        headers: { "x-admin-password": adminPassword },
+        headers: adminHeaders,
+        cache: "no-store",
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -140,9 +150,14 @@ export default function SettingsPage() {
   async function handleAdminStop(reminderId) {
     setAdminActionError("");
     try {
+      const adminHeaders = {
+        "x-admin-password": adminPassword,
+        Authorization: `Bearer ${adminPassword}`,
+      };
       const response = await fetch(`/api/admin/reminders/${reminderId}/stop`, {
         method: "POST",
-        headers: { "x-admin-password": adminPassword },
+        headers: adminHeaders,
+        cache: "no-store",
       });
       const payload = await response.json();
       if (!response.ok) {
