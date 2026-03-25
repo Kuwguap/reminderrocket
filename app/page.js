@@ -362,11 +362,11 @@ export default function Home() {
   }
 
   const primaryButtonClass =
-    "cursor-pointer rounded-full bg-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-70";
+    "cursor-pointer rounded-full bg-orange-500 px-[22px] py-[10px] text-[13px] font-semibold text-white shadow-sm transition hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-70";
   const primaryButtonSmallClass =
-    "cursor-pointer rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-70";
+    "cursor-pointer rounded-full bg-orange-500 px-[14px] py-[6px] text-[11px] font-semibold text-white transition hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-70";
   const segmentedButtonClass =
-    "cursor-pointer rounded-full border px-4 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500";
+    "cursor-pointer rounded-full border px-[14px] py-[6px] text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500";
   const isForMe = recipientMode === "me";
   const recipientName = isForMe ? "You" : specialRecipientName;
 
@@ -470,9 +470,9 @@ export default function Home() {
         </header> */}
 
         <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1.2fr,0.8fr]">
-          <div className="rounded-3xl border border-orange-200 bg-white p-5 shadow-sm">
+          <div className="rounded-3xl border border-orange-200 bg-white p-[18px] shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">
+              <h2 className="text-[11px] font-semibold text-slate-900">
                 Create a reminder
               </h2>
               {user ? (
@@ -489,33 +489,33 @@ export default function Home() {
               )}
             </div>
 
-            <form className="mt-3 grid gap-2" onSubmit={handleSubmit}>
+            <form className="mt-[10px] grid gap-[6px]" onSubmit={handleSubmit}>
               {submitError ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-600">
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-[14px] py-[10px] text-[11px] text-rose-600">
                   {submitError}
                 </div>
               ) : null}
               {submitSuccess ? (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-600">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-[14px] py-[10px] text-[11px] text-emerald-600">
                   {submitSuccess}
                 </div>
               ) : null}
 
-              <label className="grid gap-1 text-xs font-medium text-slate-700">
-                Reminder message
+              <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
+                <span className="sr-only">Reminder message</span>
                 <textarea
                   rows={2}
                   placeholder="Remind me to..."
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
-                  className="w-full resize-none rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full resize-none rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
                 {renderError("message")}
               </label>
 
-              <div className="grid gap-2 rounded-2xl border border-orange-200 px-3 py-3">
+              <div className="grid gap-[6px] rounded-2xl border border-orange-200 px-[10px] py-[10px]">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs font-semibold text-slate-900">
+                  <p className="text-[11px] font-semibold text-slate-900">
                     Who are we reminding?
                   </p>
                   <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-white p-1">
@@ -545,12 +545,12 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-                <label className="grid gap-1 text-xs font-medium text-slate-700">
+                <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                   Recipient name
                   <input
                     type="text"
                     placeholder={isForMe ? "You" : "Someone special"}
-                    className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     disabled={isForMe}
                     value={recipientName}
                     onChange={(event) => setSpecialRecipientName(event.target.value)}
@@ -559,34 +559,34 @@ export default function Home() {
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <label className="grid gap-1 text-xs font-medium text-slate-700">
-                  Phone
+                <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
+                  Text Rocket
                   <input
                     type="tel"
                     placeholder="(555) 123-4567"
                     value={phone}
                     onChange={(event) => setPhone(event.target.value)}
-                    className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                   {renderError("phone")}
                 </label>
 
-                <label className="grid gap-1 text-xs font-medium text-slate-700">
-                  Email
+                <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
+                  Email Rocket
                   <input
                     type="email"
                     placeholder="rocket@launch.com"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                   {renderError("email")}
                 </label>
               </div>
 
-              <div className="grid gap-2 text-xs font-medium text-slate-700">
+              <div className="grid gap-[6px] text-[11px] font-medium text-slate-700">
                 Frequency
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-[6px] sm:grid-cols-2">
                   {frequencyOptions.map((option) => {
                     const isActive = frequency === option.id;
                     return (
@@ -595,13 +595,13 @@ export default function Home() {
                         type="button"
                         onClick={() => setFrequency(option.id)}
                         aria-pressed={isActive}
-                        className={`rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+                        className={`rounded-2xl border px-[10px] py-[6px] text-left text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
                           isActive
                             ? "border-orange-400 bg-orange-50 text-orange-500"
                             : "border-orange-200 text-slate-700 hover:border-orange-300"
                         }`}
                       >
-                        <span className="block text-xs font-semibold">
+                        <span className="block text-[11px] font-semibold">
                           {option.label}
                         </span>
                       </button>
@@ -609,7 +609,7 @@ export default function Home() {
                   })}
                 </div>
                 {frequency === "custom" && (
-                  <div className="grid gap-2 sm:grid-cols-[1fr,120px]">
+                  <div className="grid gap-[6px] sm:grid-cols-[1fr,120px]">
                     <input
                       type="number"
                       min={5}
@@ -619,14 +619,14 @@ export default function Home() {
                       onChange={(event) =>
                         setCustomFrequencyValue(event.target.value)
                       }
-                      className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
                     <select
                       value={customFrequencyUnit}
                       onChange={(event) =>
                         setCustomFrequencyUnit(event.target.value)
                       }
-                      className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     >
                       <option value="minutes">Minutes</option>
                       <option value="hours">Hours</option>
@@ -637,8 +637,8 @@ export default function Home() {
                 {renderError("frequency_value")}
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="grid gap-1 text-xs font-medium text-slate-700">
+              <div className="grid gap-[10px] md:grid-cols-2">
+                <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                   Start time
                   <div className="flex flex-wrap items-center gap-2">
                     <button
@@ -661,25 +661,25 @@ export default function Home() {
                     </button>
                   </div>
                   {startTiming === "schedule" ? (
-                    <label className="grid gap-1 text-xs font-medium text-slate-600">
+                    <label className="grid gap-[3px] text-[11px] font-medium text-slate-600">
                       Scheduled start
                       <input
                         type="datetime-local"
                         value={scheduledAt}
                         onChange={(event) => setScheduledAt(event.target.value)}
-                        className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                       />
                       {renderError("start_time")}
                     </label>
                   ) : null}
                 </div>
 
-                <div className="grid gap-1 text-xs font-medium text-slate-700">
+                <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                   Stop condition
                   <select
                     value={stopCondition}
                     onChange={(event) => setStopCondition(event.target.value)}
-                    className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   >
                     {stopOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -689,18 +689,18 @@ export default function Home() {
                   </select>
 
                   {stopCondition === "time" ? (
-                    <label className="grid gap-1 text-xs font-medium text-slate-600">
+                    <label className="grid gap-[3px] text-[11px] font-medium text-slate-600">
                       Stop time
                       <input
                         type="datetime-local"
                         value={stopAt}
                         onChange={(event) => setStopAt(event.target.value)}
-                        className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                       />
                       {renderError("stop_at")}
                     </label>
                   ) : (
-                    <p className="text-xs text-slate-500">
+                    <p className="text-[11px] text-slate-500">
                       Proof uploads after creation.
                     </p>
                   )}
@@ -712,12 +712,19 @@ export default function Home() {
                 className={`mt-2 ${primaryButtonClass}`}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Launching..." : "Launch reminder"}
+                {isSubmitting ? (
+                  "Launching..."
+                ) : (
+                  <>
+                    Launch rocket
+                    <span className="ml-1 inline-block animate-spin">🚀</span>
+                  </>
+                )}
               </button>
             </form>
 
             {user ? (
-              <div className="mt-3 rounded-2xl border border-orange-200 px-3 py-2 text-xs">
+              <div className="mt-[10px] rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[11px]">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-semibold text-slate-900">
                     Active reminders:{" "}
@@ -726,16 +733,16 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setShowReminders(true)}
-                    className="rounded-full border border-orange-300 px-3 py-1 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600"
+                    className="rounded-full border border-orange-300 px-[10px] py-[4px] text-[11px] font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600"
                   >
                     View
                   </button>
                 </div>
                 {listError ? (
-                  <p className="mt-1 text-xs text-rose-500">{listError}</p>
+                  <p className="mt-1 text-[11px] text-rose-500">{listError}</p>
                 ) : null}
                 {actionError ? (
-                  <p className="mt-1 text-xs text-rose-500">{actionError}</p>
+                  <p className="mt-1 text-[11px] text-rose-500">{actionError}</p>
                 ) : null}
               </div>
             ) : null}
