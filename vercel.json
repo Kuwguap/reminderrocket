@@ -1,4 +1,10 @@
 {
   "version": 2,
-  "name": "reminderrocket"
+  "name": "reminderrocket",
+  "crons": [
+    {
+      "path": "/api/cron/send-reminders",
+      "schedule": "*/1 * * * *"
+    }
+  ]
 }

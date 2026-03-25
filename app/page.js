@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { createSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { formatZodErrors, reminderSchema } from "../lib/validation";
 
@@ -132,9 +133,13 @@ export default function Home() {
   }, [supabase]);
 
   useEffect(() => {
-    if (user || clientId) {
+    if (user) {
       loadReminders();
+      return;
     }
+    setReminders([]);
+    setListError("");
+    setIsLoadingReminders(false);
   }, [user, clientId]);
 
   async function loadReminders() {
@@ -315,7 +320,7 @@ export default function Home() {
     }
     setIsAuthLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: authEmail,
         password: authPassword,
       });
@@ -323,7 +328,25 @@ export default function Home() {
         setAuthError(error.message);
         return;
       }
-      setAuthError("Account created. Check your email to confirm.");
+      if (data?.session) {
+        setShowAuth(false);
+        setAuthEmail("");
+        setAuthPassword("");
+        return;
+      }
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password: authPassword,
+      });
+      if (signInError) {
+        setAuthError(
+          "Account created. Disable email confirmations in Supabase to sign in instantly."
+        );
+        return;
+      }
+      setShowAuth(false);
+      setAuthEmail("");
+      setAuthPassword("");
     } catch (error) {
       setAuthError("Unable to create account.");
     } finally {
@@ -452,9 +475,18 @@ export default function Home() {
               <h2 className="text-sm font-semibold text-slate-900">
                 Create a reminder
               </h2>
-              <span className="rounded-full border border-orange-400 px-3 py-1 text-xs font-semibold text-orange-500">
-                Start now
-              </span>
+              {user ? (
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
+                  Signed in
+                </span>
+              ) : (
+                <Link
+                  href="/sign-in"
+                  className="rounded-full border border-orange-400 px-3 py-1 text-xs font-semibold text-orange-500 transition hover:border-orange-500 hover:text-orange-600"
+                >
+                  Sign in
+                </Link>
+              )}
             </div>
 
             <form className="mt-3 grid gap-2" onSubmit={handleSubmit}>
@@ -684,27 +716,29 @@ export default function Home() {
               </button>
             </form>
 
-            <div className="mt-3 rounded-2xl border border-orange-200 px-3 py-2 text-xs">
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-semibold text-slate-900">
-                  Active reminders:{" "}
-                  {isLoadingReminders ? "Loading..." : reminders.length}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowReminders(true)}
-                  className="rounded-full border border-orange-300 px-3 py-1 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600"
-                >
-                  View
-                </button>
+            {user ? (
+              <div className="mt-3 rounded-2xl border border-orange-200 px-3 py-2 text-xs">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-slate-900">
+                    Active reminders:{" "}
+                    {isLoadingReminders ? "Loading..." : reminders.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowReminders(true)}
+                    className="rounded-full border border-orange-300 px-3 py-1 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600"
+                  >
+                    View
+                  </button>
+                </div>
+                {listError ? (
+                  <p className="mt-1 text-xs text-rose-500">{listError}</p>
+                ) : null}
+                {actionError ? (
+                  <p className="mt-1 text-xs text-rose-500">{actionError}</p>
+                ) : null}
               </div>
-              {listError ? (
-                <p className="mt-1 text-xs text-rose-500">{listError}</p>
-              ) : null}
-              {actionError ? (
-                <p className="mt-1 text-xs text-rose-500">{actionError}</p>
-              ) : null}
-            </div>
+            ) : null}
           </div>
 
           {/* <aside className="rounded-3xl border border-orange-200 bg-white p-5 shadow-sm">
@@ -733,7 +767,7 @@ export default function Home() {
           </aside> */}
         </section>
 
-        {showReminders ? (
+        {showReminders && user ? (
           <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-950/40 px-4">
             <div className="w-full max-w-xl rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
               <div className="flex items-center justify-between">
