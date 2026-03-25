@@ -154,6 +154,8 @@ export async function GET(request) {
                 : `Stop at ${formatDateTime(reminder.stop_at)}`,
             manageUrl: appBaseUrl || null,
             uploadUrl,
+            nextRunAt: reminder.next_run_at,
+            nextRunAtLabel: formatDateTime(reminder.next_run_at),
           });
           await supabase.from("reminder_attempts").insert({
             reminder_id: reminder.id,

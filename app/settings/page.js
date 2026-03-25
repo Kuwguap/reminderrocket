@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminError, setAdminError] = useState("");
+  const [isAdminLoading, setIsAdminLoading] = useState(false);
+  const [isAdminAuthed, setIsAdminAuthed] = useState(false);
+  const [adminReminders, setAdminReminders] = useState([]);
+  const [adminListError, setAdminListError] = useState("");
+  const [adminActionError, setAdminActionError] = useState("");
+  const [isAdminRefreshing, setIsAdminRefreshing] = useState(false);
   const [health, setHealth] = useState(null);
   const [healthError, setHealthError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -12,8 +20,57 @@ export default function SettingsPage() {
   const [isTesting, setIsTesting] = useState(false);
 
   useEffect(() => {
-    loadHealth();
-  }, []);
+    if (isAdminAuthed) {
+      loadHealth();
+      loadAdminReminders();
+    }
+  }, [isAdminAuthed]);
+
+  async function handleAdminAccess(event) {
+    event.preventDefault();
+    setAdminError("");
+    setAdminListError("");
+    setAdminActionError("");
+    if (!adminPassword.trim()) {
+      setAdminError("Password is required.");
+      return;
+    }
+    setIsAdminLoading(true);
+    try {
+      const response = await fetch("/api/admin/reminders", {
+        headers: { "x-admin-password": adminPassword },
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || "Invalid password.");
+      }
+      setAdminReminders(payload?.reminders ?? []);
+      setIsAdminAuthed(true);
+    } catch (error) {
+      setAdminError("Invalid password.");
+    } finally {
+      setIsAdminLoading(false);
+    }
+  }
+
+  async function loadAdminReminders() {
+    setIsAdminRefreshing(true);
+    setAdminListError("");
+    try {
+      const response = await fetch("/api/admin/reminders", {
+        headers: { "x-admin-password": adminPassword },
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || "Unable to load reminders.");
+      }
+      setAdminReminders(payload?.reminders ?? []);
+    } catch (error) {
+      setAdminListError("Unable to load running reminders.");
+    } finally {
+      setIsAdminRefreshing(false);
+    }
+  }
 
   async function loadHealth() {
     setIsLoading(true);
@@ -60,6 +117,86 @@ export default function SettingsPage() {
         ? "border-orange-400 bg-orange-50 text-orange-600"
         : "border-slate-200 text-slate-500"
     }`;
+
+  const formatDateTime = (value) => {
+    if (!value) {
+      return "—";
+    }
+    return new Date(value).toLocaleString();
+  };
+
+  const formatFrequency = (reminder) => {
+    if (reminder.frequency_type === "custom") {
+      return `Every ${reminder.frequency_value} ${reminder.frequency_unit}`;
+    }
+    const labels = {
+      hourly: "Every hour",
+      "every-3-hours": "Every 3 hours",
+      daily: "Daily",
+    };
+    return labels[reminder.frequency_type] ?? reminder.frequency_type;
+  };
+
+  async function handleAdminStop(reminderId) {
+    setAdminActionError("");
+    try {
+      const response = await fetch(`/api/admin/reminders/${reminderId}/stop`, {
+        method: "POST",
+        headers: { "x-admin-password": adminPassword },
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || "Unable to stop reminder.");
+      }
+      setAdminReminders((prev) =>
+        prev.filter((reminder) => reminder.id !== reminderId)
+      );
+    } catch (error) {
+      setAdminActionError("Unable to stop reminder.");
+    }
+  }
+
+  if (!isAdminAuthed) {
+    return (
+      <main className="min-h-screen bg-white">
+        <div className="mx-auto max-w-md px-6 py-16">
+          <div className="rounded-3xl border border-orange-200 bg-white p-6 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
+              Admin access
+            </p>
+            <h1 className="mt-3 text-2xl font-semibold text-slate-900">
+              Enter admin password
+            </h1>
+            <p className="mt-2 text-sm text-slate-600">
+              This dashboard is restricted to admins only.
+            </p>
+
+            <form className="mt-6 grid gap-3" onSubmit={handleAdminAccess}>
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Password
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={(event) => setAdminPassword(event.target.value)}
+                  className="w-full rounded-2xl border border-orange-200 px-4 py-3 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </label>
+              {adminError ? (
+                <p className="text-sm text-rose-500">{adminError}</p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={isAdminLoading}
+                className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isAdminLoading ? "Checking..." : "Unlock settings"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-white">
@@ -145,9 +282,81 @@ export default function SettingsPage() {
         </section>
 
         <section className="mt-6 rounded-3xl border border-orange-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Active reminders (admin)
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                View and stop running reminders across all users.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={loadAdminReminders}
+              disabled={isAdminRefreshing}
+              className="rounded-full border border-orange-300 px-4 py-2 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isAdminRefreshing ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
+
+          {adminListError ? (
+            <p className="mt-3 text-sm text-rose-500">{adminListError}</p>
+          ) : null}
+          {adminActionError ? (
+            <p className="mt-3 text-sm text-rose-500">{adminActionError}</p>
+          ) : null}
+
+          {adminReminders.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-500">
+              No active reminders found.
+            </p>
+          ) : (
+            <div className="mt-4 grid gap-3">
+              {adminReminders.map((reminder) => (
+                <div
+                  key={reminder.id}
+                  className="rounded-2xl border border-orange-200 p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {reminder.message}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Recipient: {reminder.recipient_name || "Unknown"}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Channel:{" "}
+                        {reminder.phone ? "SMS" : reminder.email ? "Email" : "—"}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Frequency: {formatFrequency(reminder)}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Next run: {formatDateTime(reminder.next_run_at)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleAdminStop(reminder.id)}
+                      className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-orange-600"
+                    >
+                      Stop
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-orange-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Self-test</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Send a test message to confirm Klaviyo and Resend are configured.
+            Send a test email and seed the Klaviyo metric (SMS requires a phone
+            number with consent).
           </p>
 
           <form className="mt-4 grid gap-4" onSubmit={runTest}>

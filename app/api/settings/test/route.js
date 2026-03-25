@@ -63,21 +63,27 @@ export async function POST(request) {
     }
   }
 
-  if (phone) {
+  if (phone || email) {
     if (!hasValue(process.env.KLAVIYO_API_KEY)) {
       results.sms = { status: "skipped", error: "Missing Klaviyo API key." };
     } else {
       try {
-        const externalId = `rr_test_${phone.replace(/\D/g, "")}`;
-        await subscribeSmsProfile({
-          apiKey: process.env.KLAVIYO_API_KEY,
-          email: email || null,
-          phoneNumber: phone,
-          listId: process.env.KLAVIYO_LIST_ID || null,
-        });
+        const externalId = phone
+          ? `rr_test_${phone.replace(/\D/g, "")}`
+          : `rr_test_${email.replace(/[^a-z0-9]/gi, "").slice(0, 48)}`;
+
+        if (phone) {
+          await subscribeSmsProfile({
+            apiKey: process.env.KLAVIYO_API_KEY,
+            email: email || null,
+            phoneNumber: phone,
+            listId: process.env.KLAVIYO_LIST_ID || null,
+          });
+        }
+
         await sendSmsEvent({
           apiKey: process.env.KLAVIYO_API_KEY,
-          phoneNumber: phone,
+          phoneNumber: phone || null,
           email: email || null,
           externalId,
           message: "Reminder Rocket test SMS",
@@ -86,12 +92,21 @@ export async function POST(request) {
           stopCondition: "Test",
           manageUrl: process.env.APP_BASE_URL || null,
           uploadUrl: null,
+          nextRunAt: new Date().toISOString(),
+          nextRunAtLabel: new Date().toLocaleString(),
         });
-        results.sms = {
-          status: "queued",
-          note:
-            "Klaviyo will send SMS when a flow is configured for the Reminder Rocket SMS event.",
-        };
+
+        results.sms = phone
+          ? {
+              status: "queued",
+              note:
+                "Klaviyo will send SMS when a flow is configured for the Reminder Rocket SMS event.",
+            }
+          : {
+              status: "seeded",
+              note:
+                "Klaviyo event sent to create the Reminder Rocket SMS metric.",
+            };
       } catch (error) {
         results.sms = {
           status: "failed",

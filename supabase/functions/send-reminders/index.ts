@@ -67,6 +67,8 @@ async function sendKlaviyoSmsEvent(params: {
   stopCondition: string;
   manageUrl?: string | null;
   uploadUrl?: string | null;
+  nextRunAt?: string | null;
+  nextRunAtLabel?: string | null;
 }) {
   const profileAttributes: Record<string, string> = {
     phone_number: params.phoneNumber,
@@ -89,6 +91,8 @@ async function sendKlaviyoSmsEvent(params: {
           stop_condition: params.stopCondition,
           manage_url: params.manageUrl ?? null,
           upload_url: params.uploadUrl ?? null,
+          next_run_at: params.nextRunAt ?? null,
+          next_run_at_label: params.nextRunAtLabel ?? null,
         },
         metric: {
           data: {
@@ -340,6 +344,8 @@ serve(async () => {
                 : `Stop at ${formatDateTime(reminder.stop_at)}`,
             manageUrl: APP_BASE_URL || null,
             uploadUrl,
+            nextRunAt: reminder.next_run_at,
+            nextRunAtLabel: formatDateTime(reminder.next_run_at),
           });
           await logAttempt(reminder.id, "sms", "sent");
           delivered = true;
