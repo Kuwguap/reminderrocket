@@ -12,16 +12,15 @@ export async function GET() {
     supabaseServiceKey: hasValue(process.env.SUPABASE_SERVICE_ROLE_KEY),
     resendKey: hasValue(process.env.RESEND_API_KEY),
     resendFrom: hasValue(process.env.RESEND_FROM_EMAIL),
-    twilioSid: hasValue(process.env.TWILIO_ACCOUNT_SID),
-    twilioToken: hasValue(process.env.TWILIO_AUTH_TOKEN),
-    twilioPhone: hasValue(process.env.TWILIO_PHONE_NUMBER),
+    klaviyoKey: hasValue(process.env.KLAVIYO_API_KEY),
+    klaviyoList: hasValue(process.env.KLAVIYO_LIST_ID),
     appBaseUrl: hasValue(process.env.APP_BASE_URL),
   };
 
   const summary = {
     supabase: false,
     resend: envStatus.resendKey && envStatus.resendFrom,
-    twilio: envStatus.twilioSid && envStatus.twilioToken && envStatus.twilioPhone,
+    klaviyo: envStatus.klaviyoKey,
   };
 
   let supabaseError = null;

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import twilio from "twilio";
 import { buildReminderEmail } from "../../../../lib/emailTemplate";
+import { sendSmsEvent, subscribeSmsProfile } from "../../../../lib/klaviyo";
 
 function hasValue(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -64,24 +64,35 @@ export async function POST(request) {
   }
 
   if (phone) {
-    if (
-      !hasValue(process.env.TWILIO_ACCOUNT_SID) ||
-      !hasValue(process.env.TWILIO_AUTH_TOKEN) ||
-      !hasValue(process.env.TWILIO_PHONE_NUMBER)
-    ) {
-      results.sms = { status: "skipped", error: "Missing Twilio env vars." };
+    if (!hasValue(process.env.KLAVIYO_API_KEY)) {
+      results.sms = { status: "skipped", error: "Missing Klaviyo API key." };
     } else {
       try {
-        const client = twilio(
-          process.env.TWILIO_ACCOUNT_SID,
-          process.env.TWILIO_AUTH_TOKEN
-        );
-        await client.messages.create({
-          to: phone,
-          from: process.env.TWILIO_PHONE_NUMBER,
-          body: "Reminder Rocket test message.",
+        const externalId = `rr_test_${phone.replace(/\D/g, "")}`;
+        await subscribeSmsProfile({
+          apiKey: process.env.KLAVIYO_API_KEY,
+          email: email || null,
+          phoneNumber: phone,
+          externalId,
+          listId: process.env.KLAVIYO_LIST_ID || null,
         });
-        results.sms = { status: "sent" };
+        await sendSmsEvent({
+          apiKey: process.env.KLAVIYO_API_KEY,
+          phoneNumber: phone,
+          email: email || null,
+          externalId,
+          message: "Reminder Rocket test SMS",
+          reminderId: externalId,
+          frequencyLabel: "Test",
+          stopCondition: "Test",
+          manageUrl: process.env.APP_BASE_URL || null,
+          uploadUrl: null,
+        });
+        results.sms = {
+          status: "queued",
+          note:
+            "Klaviyo will send SMS when a flow is configured for the Reminder Rocket SMS event.",
+        };
       } catch (error) {
         results.sms = {
           status: "failed",

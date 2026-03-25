@@ -10,7 +10,7 @@ https://reminderrocket.vercel.app
 
 ## ✨ Features
 
-* **Dual-Channel Alerts:** Integration with **Twilio** (SMS) and **Resend** (Email).
+* **Dual-Channel Alerts:** Integration with **Klaviyo** (SMS) and **Resend** (Email).
 * **Flexible Recipients:** Send reminders to yourself or "Someone Special."
 * **Smart Stop Conditions:** End reminders at a specific time or require **Picture Proof** to stop the notifications.
 * **Custom Frequency:** Set your own orbit—remind every hour, day, or custom interval.
@@ -21,7 +21,7 @@ https://reminderrocket.vercel.app
 * **Frontend:** Next.js / React
 * **Database & Auth:** [Supabase](https://supabase.com/)
 * **Email Service:** [Resend](https://resend.com/)
-* **SMS Service:** [Twilio](https://www.twilio.com/)
+* **SMS Service:** [Klaviyo](https://www.klaviyo.com/)
 * **Styling:** Tailwind CSS
 
 ## ⚙️ Environment Variables
@@ -34,9 +34,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 RESEND_API_KEY=your_resend_key
 RESEND_FROM_EMAIL=Reminder Rocket <noreply@reminderrocket.com>
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token
-TWILIO_PHONE_NUMBER=your_twilio_number
+KLAVIYO_API_KEY=your_klaviyo_private_api_key
+KLAVIYO_LIST_ID=optional_single_opt_in_list_id
 APP_BASE_URL=http://localhost:3000
 ```
 
@@ -53,6 +52,13 @@ APP_BASE_URL=http://localhost:3000
    ```bash
    npm run dev
    ```
+
+## 📲 Klaviyo SMS Setup
+
+Reminder Rocket sends SMS by creating a Klaviyo event named **Reminder Rocket SMS**.
+Create a Klaviyo flow that is triggered by this event and send an SMS using the
+event property `message` for the body. Klaviyo SMS must be enabled in your account,
+and any phone numbers must be consented to receive SMS.
 
 ## 🧩 Supabase Notes
 

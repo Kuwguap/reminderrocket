@@ -10,6 +10,13 @@ supabase functions deploy send-reminders
 supabase secrets set --env-file .env
 ```
 
+Required secrets:
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+- `KLAVIYO_API_KEY`
+- `APP_BASE_URL`
+
 ## Schedule (Cron)
 - In the Supabase dashboard, create a scheduled trigger to call:
   `https://<project-ref>.supabase.co/functions/v1/send-reminders`

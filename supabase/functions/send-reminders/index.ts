@@ -6,9 +6,7 @@ const SUPABASE_URL =
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL");
-const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
-const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
-const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
+const KLAVIYO_API_KEY = Deno.env.get("KLAVIYO_API_KEY");
 const APP_BASE_URL = Deno.env.get("APP_BASE_URL") || "";
 
 const requiredEnv = [
@@ -18,10 +16,7 @@ const requiredEnv = [
 
 const hasResend =
   Boolean(RESEND_API_KEY) && Boolean(RESEND_FROM_EMAIL);
-const hasTwilio =
-  Boolean(TWILIO_ACCOUNT_SID) &&
-  Boolean(TWILIO_AUTH_TOKEN) &&
-  Boolean(TWILIO_PHONE_NUMBER);
+const hasKlaviyo = Boolean(KLAVIYO_API_KEY);
 
 const supabase = createClient(SUPABASE_URL ?? "", SUPABASE_SERVICE_ROLE_KEY ?? "");
 
@@ -62,27 +57,71 @@ async function logAttempt(reminderId: string, channel: string, status: string, e
   });
 }
 
-async function sendSms(to: string, body: string) {
-  const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
-  const response = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${auth}`,
-        "Content-Type": "application/x-www-form-urlencoded",
+async function sendKlaviyoSmsEvent(params: {
+  phoneNumber: string;
+  email?: string | null;
+  externalId?: string | null;
+  message: string;
+  reminderId: string;
+  frequencyLabel: string;
+  stopCondition: string;
+  manageUrl?: string | null;
+  uploadUrl?: string | null;
+}) {
+  const profileAttributes: Record<string, string> = {
+    phone_number: params.phoneNumber,
+  };
+  if (params.email) {
+    profileAttributes.email = params.email;
+  }
+  if (params.externalId) {
+    profileAttributes.external_id = params.externalId;
+  }
+
+  const payload = {
+    data: {
+      type: "event",
+      attributes: {
+        properties: {
+          message: params.message,
+          reminder_id: params.reminderId,
+          frequency: params.frequencyLabel,
+          stop_condition: params.stopCondition,
+          manage_url: params.manageUrl ?? null,
+          upload_url: params.uploadUrl ?? null,
+        },
+        metric: {
+          data: {
+            type: "metric",
+            attributes: {
+              name: "Reminder Rocket SMS",
+            },
+          },
+        },
+        profile: {
+          data: {
+            type: "profile",
+            attributes: profileAttributes,
+          },
+        },
       },
-      body: new URLSearchParams({
-        To: to,
-        From: TWILIO_PHONE_NUMBER ?? "",
-        Body: body,
-      }),
-    }
-  );
+    },
+  };
+
+  const response = await fetch("https://a.klaviyo.com/api/events/", {
+    method: "POST",
+    headers: {
+      Authorization: `Klaviyo-API-Key ${KLAVIYO_API_KEY}`,
+      accept: "application/json",
+      "content-type": "application/vnd.api+json",
+      revision: "2025-01-15",
+    },
+    body: JSON.stringify(payload),
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Twilio send failed.");
+    throw new Error(errorText || "Klaviyo SMS event failed.");
   }
 }
 
@@ -143,6 +182,18 @@ function getFrequencyLabel(reminder: {
   return labels[reminder.frequency_type] ?? reminder.frequency_type;
 }
 
+function buildUploadUrl(reminder: { id: string; client_id?: string | null }) {
+  if (!APP_BASE_URL) {
+    return null;
+  }
+  const base = APP_BASE_URL.replace(/\/+$/, "");
+  const url = new URL(`${base}/upload/${reminder.id}`);
+  if (reminder.client_id) {
+    url.searchParams.set("client_id", reminder.client_id);
+  }
+  return url.toString();
+}
+
 function buildReminderEmail(params: {
   title: string;
   subtitle: string;
@@ -150,6 +201,8 @@ function buildReminderEmail(params: {
   details: Array<{ label: string; value: string }>;
   ctaUrl?: string;
   ctaLabel?: string;
+  secondaryCtaUrl?: string;
+  secondaryCtaLabel?: string;
 }) {
   const detailRows = params.details
     .map(
@@ -191,6 +244,15 @@ function buildReminderEmail(params: {
               params.ctaUrl
             )}" style="display: inline-block; margin-top: 8px; background-color: #f97316; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 10px 18px; border-radius: 999px;">${escapeHtml(
               params.ctaLabel ?? "Open Reminder Rocket"
+            )}</a>`
+          : ""
+      }
+      ${
+        params.secondaryCtaUrl
+          ? `<a href="${escapeHtml(
+              params.secondaryCtaUrl
+            )}" style="display: inline-block; margin-top: 8px; margin-left: 8px; border: 1px solid #fb923c; color: #f97316; text-decoration: none; font-size: 13px; font-weight: 700; padding: 10px 18px; border-radius: 999px;">${escapeHtml(
+              params.secondaryCtaLabel ?? "Upload receipt"
             )}</a>`
           : ""
       }
@@ -248,22 +310,37 @@ serve(async () => {
       continue;
     }
 
+    const uploadUrl =
+      reminder.stop_condition === "proof" ? buildUploadUrl(reminder) : null;
     const messageBody = `${reminder.message}\n\nManage: ${
       APP_BASE_URL || "your Reminder Rocket dashboard"
-    }`;
+    }${uploadUrl ? `\nUpload receipt: ${uploadUrl}` : ""}`;
 
     if (reminder.phone) {
       try {
-        if (!hasTwilio) {
+        if (!hasKlaviyo) {
           await logAttempt(
             reminder.id,
             "sms",
             "skipped",
-            "Missing Twilio env vars."
+            "Missing Klaviyo API key."
           );
         } else {
           hasConfiguredChannel = true;
-          await sendSms(reminder.phone, messageBody);
+          await sendKlaviyoSmsEvent({
+            phoneNumber: reminder.phone,
+            email: reminder.email,
+            externalId: reminder.client_id || reminder.user_id || reminder.id,
+            message: messageBody,
+            reminderId: reminder.id,
+            frequencyLabel: getFrequencyLabel(reminder),
+            stopCondition:
+              reminder.stop_condition === "proof"
+                ? "Picture proof required"
+                : `Stop at ${formatDateTime(reminder.stop_at)}`,
+            manageUrl: APP_BASE_URL || null,
+            uploadUrl,
+          });
           await logAttempt(reminder.id, "sms", "sent");
           delivered = true;
         }
@@ -301,6 +378,11 @@ serve(async () => {
             ],
             ctaUrl: APP_BASE_URL || undefined,
             ctaLabel: "Open Reminder Rocket",
+            secondaryCtaUrl:
+              reminder.stop_condition === "proof"
+                ? buildUploadUrl(reminder)
+                : undefined,
+            secondaryCtaLabel: "Upload receipt",
           });
           await sendEmail(reminder.email, "Reminder Rocket", html);
           await logAttempt(reminder.id, "email", "sent");

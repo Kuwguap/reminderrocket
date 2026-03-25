@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../lib/emailTemplate";
+import { subscribeSmsProfile } from "../../../lib/klaviyo";
 import { createSupabaseAuthClient } from "../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
 import { formatZodErrors, reminderSchema } from "../../../lib/validation";
@@ -48,6 +49,18 @@ function formatDateTime(value) {
   return new Date(value).toLocaleString();
 }
 
+function buildUploadUrl(reminder) {
+  if (!process.env.APP_BASE_URL) {
+    return null;
+  }
+  const base = process.env.APP_BASE_URL.replace(/\/+$/, "");
+  const url = new URL(`${base}/upload/${reminder.id}`);
+  if (reminder.client_id) {
+    url.searchParams.set("client_id", reminder.client_id);
+  }
+  return url.toString();
+}
+
 async function sendConfirmationEmail(reminder) {
   const resendApiKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.RESEND_FROM_EMAIL;
@@ -75,6 +88,9 @@ async function sendConfirmationEmail(reminder) {
     ],
     ctaUrl: process.env.APP_BASE_URL || undefined,
     ctaLabel: "View reminders",
+    secondaryCtaUrl:
+      reminder.stop_condition === "proof" ? buildUploadUrl(reminder) : undefined,
+    secondaryCtaLabel: "Upload receipt",
   });
 
   await resend.emails.send({
@@ -228,20 +244,41 @@ export async function POST(request) {
     const hasResend =
       Boolean(process.env.RESEND_API_KEY) &&
       Boolean(process.env.RESEND_FROM_EMAIL);
-    const hasTwilio =
-      Boolean(process.env.TWILIO_ACCOUNT_SID) &&
-      Boolean(process.env.TWILIO_AUTH_TOKEN) &&
-      Boolean(process.env.TWILIO_PHONE_NUMBER);
+    const hasKlaviyo = Boolean(process.env.KLAVIYO_API_KEY);
+    const klaviyoListId = process.env.KLAVIYO_LIST_ID || null;
 
     const channelErrors = {};
     if (data.email && !hasResend) {
       channelErrors.email = "Email delivery is not configured.";
     }
-    if (data.phone && !hasTwilio) {
+    if (data.phone && !hasKlaviyo) {
       channelErrors.phone = "SMS delivery is not configured.";
     }
     if (Object.keys(channelErrors).length > 0) {
       return NextResponse.json({ errors: channelErrors }, { status: 400 });
+    }
+
+    if (data.phone && hasKlaviyo) {
+      try {
+        const externalId = user ? user.id : clientId;
+        await subscribeSmsProfile({
+          apiKey: process.env.KLAVIYO_API_KEY,
+          email: data.email || null,
+          phoneNumber: data.phone,
+          externalId,
+          listId: klaviyoListId,
+        });
+      } catch (error) {
+        return NextResponse.json(
+          {
+            errors: {
+              phone:
+                "Unable to subscribe this phone number for SMS. Check Klaviyo SMS setup.",
+            },
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const nextRunAt =
