@@ -449,7 +449,7 @@ export default function Home() {
         <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1.2fr,0.8fr]">
           <div className="rounded-3xl border border-orange-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-sm font-semibold text-slate-900">
                 Create a reminder
               </h2>
               <span className="rounded-full border border-orange-400 px-3 py-1 text-xs font-semibold text-orange-500">
@@ -708,7 +708,7 @@ export default function Home() {
           </div>
 
           {/* <aside className="rounded-3xl border border-orange-200 bg-white p-5 shadow-sm">
-            <h3 className="text-base font-semibold text-slate-900">
+            <h3 className="text-sm font-semibold text-slate-900">
               What stays in orbit
             </h3>
             <div className="mt-3 rounded-2xl border border-orange-200 bg-orange-50 px-3 py-3">
@@ -737,7 +737,7 @@ export default function Home() {
           <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-950/40 px-4">
             <div className="w-full max-w-xl rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-slate-900">
                   Active reminders
                 </h3>
                 <div className="flex items-center gap-2">
@@ -855,7 +855,7 @@ export default function Home() {
           <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/40 px-4">
             <div className="w-full max-w-sm rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-slate-900">
                   Account access
                 </h3>
                 <button

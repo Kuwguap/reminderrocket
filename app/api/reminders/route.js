@@ -105,7 +105,12 @@ async function sendConfirmationEmail(reminder) {
 
 export async function GET(request) {
   try {
-    const authClient = createSupabaseAuthClient();
+    let authClient = null;
+    try {
+      authClient = createSupabaseAuthClient();
+    } catch (error) {
+      console.warn("Reminders GET auth init failed:", error);
+    }
     let supabase;
     try {
       supabase = createSupabaseServerClient();
@@ -121,10 +126,14 @@ export async function GET(request) {
 
     let user = null;
     if (authClient) {
-      const {
-        data: { user: authUser },
-      } = await authClient.auth.getUser();
-      user = authUser ?? null;
+      try {
+        const {
+          data: { user: authUser },
+        } = await authClient.auth.getUser();
+        user = authUser ?? null;
+      } catch (error) {
+        console.warn("Reminders GET auth fetch failed:", error);
+      }
     }
 
     let query = supabase
@@ -164,7 +173,12 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const authClient = createSupabaseAuthClient();
+    let authClient = null;
+    try {
+      authClient = createSupabaseAuthClient();
+    } catch (error) {
+      console.warn("Reminders POST auth init failed:", error);
+    }
     let supabase;
     try {
       supabase = createSupabaseServerClient();
@@ -196,10 +210,14 @@ export async function POST(request) {
     const data = parsed.data;
     let user = null;
     if (authClient) {
-      const {
-        data: { user: authUser },
-      } = await authClient.auth.getUser();
-      user = authUser ?? null;
+      try {
+        const {
+          data: { user: authUser },
+        } = await authClient.auth.getUser();
+        user = authUser ?? null;
+      } catch (error) {
+        console.warn("Reminders POST auth fetch failed:", error);
+      }
     }
 
     const clientId = data.client_id;

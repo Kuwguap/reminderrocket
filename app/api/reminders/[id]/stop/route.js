@@ -13,7 +13,12 @@ export async function POST(request, { params }) {
       );
     }
 
-    const authClient = createSupabaseAuthClient();
+    let authClient = null;
+    try {
+      authClient = createSupabaseAuthClient();
+    } catch (error) {
+      console.warn("Reminders STOP auth init failed:", error);
+    }
     let supabase;
     try {
       supabase = createSupabaseServerClient();
@@ -29,10 +34,14 @@ export async function POST(request, { params }) {
 
     let user = null;
     if (authClient) {
-      const {
-        data: { user: authUser },
-      } = await authClient.auth.getUser();
-      user = authUser ?? null;
+      try {
+        const {
+          data: { user: authUser },
+        } = await authClient.auth.getUser();
+        user = authUser ?? null;
+      } catch (error) {
+        console.warn("Reminders STOP auth fetch failed:", error);
+      }
     }
 
     if (!user && !clientId) {
