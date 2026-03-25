@@ -88,187 +88,208 @@ async function sendConfirmationEmail(reminder) {
 }
 
 export async function GET(request) {
-  const authClient = createSupabaseAuthClient();
-  let supabase;
   try {
-    supabase = createSupabaseServerClient();
+    const authClient = createSupabaseAuthClient();
+    let supabase;
+    try {
+      supabase = createSupabaseServerClient();
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Supabase server configuration is missing." },
+        { status: 500 }
+      );
+    }
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status");
+    const clientId = searchParams.get("client_id");
+
+    let user = null;
+    if (authClient) {
+      const {
+        data: { user: authUser },
+      } = await authClient.auth.getUser();
+      user = authUser ?? null;
+    }
+
+    let query = supabase
+      .from("reminders")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (status) {
+      query = query.eq("status", status);
+    }
+
+    if (user) {
+      query = query.eq("user_id", user.id);
+    } else if (clientId) {
+      query = query.eq("client_id", clientId);
+    } else {
+      return NextResponse.json({ reminders: [] });
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Reminders GET error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ reminders: data ?? [] });
   } catch (error) {
+    console.error("Reminders GET failure:", error);
     return NextResponse.json(
-      { error: "Supabase server configuration is missing." },
+      { error: "Unexpected server error." },
       { status: 500 }
     );
   }
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status");
-  const clientId = searchParams.get("client_id");
-
-  let user = null;
-  if (authClient) {
-    const {
-      data: { user: authUser },
-    } = await authClient.auth.getUser();
-    user = authUser ?? null;
-  }
-
-  let query = supabase
-    .from("reminders")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (status) {
-    query = query.eq("status", status);
-  }
-
-  if (user) {
-    query = query.eq("user_id", user.id);
-  } else if (clientId) {
-    query = query.eq("client_id", clientId);
-  } else {
-    return NextResponse.json({ reminders: [] });
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ reminders: data ?? [] });
 }
 
 export async function POST(request) {
-  const authClient = createSupabaseAuthClient();
-  let supabase;
   try {
-    supabase = createSupabaseServerClient();
+    const authClient = createSupabaseAuthClient();
+    let supabase;
+    try {
+      supabase = createSupabaseServerClient();
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Supabase server configuration is missing." },
+        { status: 500 }
+      );
+    }
+
+    let payload = null;
+    try {
+      payload = await request.json();
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Invalid JSON payload." },
+        { status: 400 }
+      );
+    }
+
+    const parsed = reminderSchema.safeParse(payload);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { errors: formatZodErrors(parsed.error) },
+        { status: 400 }
+      );
+    }
+
+    const data = parsed.data;
+    let user = null;
+    if (authClient) {
+      const {
+        data: { user: authUser },
+      } = await authClient.auth.getUser();
+      user = authUser ?? null;
+    }
+
+    const clientId = data.client_id;
+    if (!user && !clientId) {
+      return NextResponse.json(
+        { errors: { client_id: "Missing device session." } },
+        { status: 400 }
+      );
+    }
+
+    const now = new Date();
+    const startTime = new Date(data.start_time);
+    const stopTime = data.stop_at ? new Date(data.stop_at) : null;
+
+    if (Number.isNaN(startTime.getTime())) {
+      return NextResponse.json(
+        { errors: { start_time: "Invalid start time." } },
+        { status: 400 }
+      );
+    }
+
+    if (stopTime && stopTime <= startTime) {
+      return NextResponse.json(
+        { errors: { stop_at: "Stop time must be after start time." } },
+        { status: 400 }
+      );
+    }
+
+    const intervalMs = getIntervalMs(
+      data.frequency_type,
+      data.frequency_value,
+      data.frequency_unit
+    );
+
+    if (!intervalMs) {
+      return NextResponse.json(
+        { errors: { frequency_value: "Invalid frequency selection." } },
+        { status: 400 }
+      );
+    }
+
+    const hasResend =
+      Boolean(process.env.RESEND_API_KEY) &&
+      Boolean(process.env.RESEND_FROM_EMAIL);
+    const hasTwilio =
+      Boolean(process.env.TWILIO_ACCOUNT_SID) &&
+      Boolean(process.env.TWILIO_AUTH_TOKEN) &&
+      Boolean(process.env.TWILIO_PHONE_NUMBER);
+
+    const channelErrors = {};
+    if (data.email && !hasResend) {
+      channelErrors.email = "Email delivery is not configured.";
+    }
+    if (data.phone && !hasTwilio) {
+      channelErrors.phone = "SMS delivery is not configured.";
+    }
+    if (Object.keys(channelErrors).length > 0) {
+      return NextResponse.json({ errors: channelErrors }, { status: 400 });
+    }
+
+    const nextRunAt =
+      startTime <= now ? new Date(now.getTime() + intervalMs) : startTime;
+
+    const insertPayload = {
+      message: data.message,
+      recipient_name: data.recipient_name,
+      phone: data.phone,
+      email: data.email,
+      frequency_type: data.frequency_type,
+      frequency_value:
+        data.frequency_type === "custom" ? data.frequency_value : null,
+      frequency_unit:
+        data.frequency_type === "custom" ? data.frequency_unit : null,
+      start_time: startTime.toISOString(),
+      next_run_at: nextRunAt.toISOString(),
+      stop_condition: data.stop_condition,
+      stop_at: stopTime ? stopTime.toISOString() : null,
+      user_id: user ? user.id : null,
+      client_id: user ? null : clientId,
+      status: "active",
+    };
+
+    const { data: reminder, error } = await supabase
+      .from("reminders")
+      .insert(insertPayload)
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("Reminders POST error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    let confirmation = null;
+    try {
+      confirmation = await sendConfirmationEmail(reminder);
+    } catch (error) {
+      confirmation = { status: "failed", error: String(error) };
+    }
+
+    return NextResponse.json({ reminder, confirmation });
   } catch (error) {
+    console.error("Reminders POST failure:", error);
     return NextResponse.json(
-      { error: "Supabase server configuration is missing." },
+      { error: "Unexpected server error." },
       { status: 500 }
     );
   }
-
-  let payload = null;
-  try {
-    payload = await request.json();
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Invalid JSON payload." },
-      { status: 400 }
-    );
-  }
-
-  const parsed = reminderSchema.safeParse(payload);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { errors: formatZodErrors(parsed.error) },
-      { status: 400 }
-    );
-  }
-
-  const data = parsed.data;
-  let user = null;
-  if (authClient) {
-    const {
-      data: { user: authUser },
-    } = await authClient.auth.getUser();
-    user = authUser ?? null;
-  }
-
-  const clientId = data.client_id;
-  if (!user && !clientId) {
-    return NextResponse.json(
-      { errors: { client_id: "Missing device session." } },
-      { status: 400 }
-    );
-  }
-
-  const now = new Date();
-  const startTime = new Date(data.start_time);
-  const stopTime = data.stop_at ? new Date(data.stop_at) : null;
-
-  if (Number.isNaN(startTime.getTime())) {
-    return NextResponse.json(
-      { errors: { start_time: "Invalid start time." } },
-      { status: 400 }
-    );
-  }
-
-  if (stopTime && stopTime <= startTime) {
-    return NextResponse.json(
-      { errors: { stop_at: "Stop time must be after start time." } },
-      { status: 400 }
-    );
-  }
-
-  const intervalMs = getIntervalMs(
-    data.frequency_type,
-    data.frequency_value,
-    data.frequency_unit
-  );
-
-  if (!intervalMs) {
-    return NextResponse.json(
-      { errors: { frequency_value: "Invalid frequency selection." } },
-      { status: 400 }
-    );
-  }
-
-  const hasResend =
-    Boolean(process.env.RESEND_API_KEY) && Boolean(process.env.RESEND_FROM_EMAIL);
-  const hasTwilio =
-    Boolean(process.env.TWILIO_ACCOUNT_SID) &&
-    Boolean(process.env.TWILIO_AUTH_TOKEN) &&
-    Boolean(process.env.TWILIO_PHONE_NUMBER);
-
-  const channelErrors = {};
-  if (data.email && !hasResend) {
-    channelErrors.email = "Email delivery is not configured.";
-  }
-  if (data.phone && !hasTwilio) {
-    channelErrors.phone = "SMS delivery is not configured.";
-  }
-  if (Object.keys(channelErrors).length > 0) {
-    return NextResponse.json({ errors: channelErrors }, { status: 400 });
-  }
-
-  const nextRunAt =
-    startTime <= now ? new Date(now.getTime() + intervalMs) : startTime;
-
-  const insertPayload = {
-    message: data.message,
-    recipient_name: data.recipient_name,
-    phone: data.phone,
-    email: data.email,
-    frequency_type: data.frequency_type,
-    frequency_value: data.frequency_type === "custom" ? data.frequency_value : null,
-    frequency_unit: data.frequency_type === "custom" ? data.frequency_unit : null,
-    start_time: startTime.toISOString(),
-    next_run_at: nextRunAt.toISOString(),
-    stop_condition: data.stop_condition,
-    stop_at: stopTime ? stopTime.toISOString() : null,
-    user_id: user ? user.id : null,
-    client_id: user ? null : clientId,
-    status: "active",
-  };
-
-  const { data: reminder, error } = await supabase
-    .from("reminders")
-    .insert(insertPayload)
-    .select("*")
-    .single();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  let confirmation = null;
-  try {
-    confirmation = await sendConfirmationEmail(reminder);
-  } catch (error) {
-    confirmation = { status: "failed", error: String(error) };
-  }
-
-  return NextResponse.json({ reminder, confirmation });
 }
