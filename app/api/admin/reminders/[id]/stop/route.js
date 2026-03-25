@@ -3,6 +3,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+export const runtime = "nodejs";
+
 const ADMIN_PASSWORD = "toAdminPassword123#";
 
 function getSupabaseClient() {
@@ -16,7 +18,7 @@ function getSupabaseClient() {
   });
 }
 
-function extractPassword(request) {
+async function extractPassword(request) {
   const headerPassword = request.headers.get("x-admin-password")?.trim();
   if (headerPassword) {
     return headerPassword;
@@ -25,16 +27,36 @@ function extractPassword(request) {
   if (authHeader?.toLowerCase().startsWith("bearer ")) {
     return authHeader.slice(7).trim();
   }
-  return authHeader || "";
+  if (authHeader) {
+    return authHeader;
+  }
+  const { searchParams } = new URL(request.url);
+  const queryPassword = searchParams.get("password")?.trim();
+  if (queryPassword) {
+    return queryPassword;
+  }
+  if (request.method !== "GET") {
+    try {
+      const payload = await request.json();
+      const bodyPassword =
+        typeof payload?.password === "string" ? payload.password.trim() : "";
+      if (bodyPassword) {
+        return bodyPassword;
+      }
+    } catch (error) {
+      // ignore body parsing errors
+    }
+  }
+  return "";
 }
 
-function isAuthorized(request) {
-  const password = extractPassword(request);
+async function isAuthorized(request) {
+  const password = await extractPassword(request);
   return password === ADMIN_PASSWORD;
 }
 
 export async function POST(request, { params }) {
-  if (!isAuthorized(request)) {
+  if (!(await isAuthorized(request))) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
@@ -59,10 +81,13 @@ export async function POST(request, { params }) {
     .update({ status: "completed", completed_at: nowIso })
     .eq("id", reminderId)
     .select("*")
-    .single();
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (!data) {
+    return NextResponse.json({ error: "Reminder not found." }, { status: 404 });
   }
 
   await supabase.from("reminder_attempts").insert({
