@@ -30,9 +30,10 @@ Copy `.env.example` to `.env`, then fill in:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 RESEND_API_KEY=your_resend_key
-RESEND_FROM_EMAIL=noreply@reminderrocket.com
+RESEND_FROM_EMAIL=Reminder Rocket <noreply@reminderrocket.com>
 TWILIO_ACCOUNT_SID=your_twilio_sid
 TWILIO_AUTH_TOKEN=your_twilio_token
 TWILIO_PHONE_NUMBER=your_twilio_number

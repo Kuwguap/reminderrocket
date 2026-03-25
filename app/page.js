@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { formatZodErrors, reminderSchema } from "../lib/validation";
 
 const quotes = [
@@ -63,6 +64,21 @@ export default function Home() {
   const [uploadingId, setUploadingId] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [clientId, setClientId] = useState("");
+
+  const supabase = useMemo(() => {
+    try {
+      return createSupabaseBrowserClient();
+    } catch (error) {
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -72,14 +88,64 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    loadReminders();
+    if (typeof window === "undefined") {
+      return;
+    }
+    const key = "rr_client_id";
+    let stored = window.localStorage.getItem(key);
+    if (!stored) {
+      const fallbackUuid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+        /[xy]/g,
+        (char) => {
+          const rand = Math.floor(Math.random() * 16);
+          const value = char === "x" ? rand : (rand & 0x3) | 0x8;
+          return value.toString(16);
+        }
+      );
+      stored = window.crypto?.randomUUID?.() ?? fallbackUuid;
+      window.localStorage.setItem(key, stored);
+    }
+    setClientId(stored);
   }, []);
+
+  useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+    let isActive = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (isActive) {
+        setUser(data.user ?? null);
+      }
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (isActive) {
+          setUser(session?.user ?? null);
+        }
+      }
+    );
+    return () => {
+      isActive = false;
+      subscription?.unsubscribe();
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    if (user || clientId) {
+      loadReminders();
+    }
+  }, [user, clientId]);
 
   async function loadReminders() {
     setIsLoadingReminders(true);
     setListError("");
     try {
-      const response = await fetch("/api/reminders?status=active");
+      const params = new URLSearchParams({ status: "active" });
+      if (!user && clientId) {
+        params.set("client_id", clientId);
+      }
+      const response = await fetch(`/api/reminders?${params.toString()}`);
       const payload = await response.json();
       if (!response.ok) {
         throw new Error(payload?.error || "Unable to load reminders.");
@@ -98,6 +164,11 @@ export default function Home() {
     setSubmitError("");
     setSubmitSuccess("");
 
+    if (!user && !clientId) {
+      setSubmitError("Missing device session. Refresh the page and try again.");
+      return;
+    }
+
     const startTime =
       startTiming === "now"
         ? new Date()
@@ -108,6 +179,7 @@ export default function Home() {
       stopCondition === "time" && stopAt ? new Date(stopAt) : null;
 
     const payload = {
+      client_id: user ? null : clientId,
       message: message.trim(),
       recipient_name: (recipientMode === "me" ? "You" : specialRecipientName).trim(),
       phone,
@@ -167,7 +239,8 @@ export default function Home() {
   async function handleStopReminder(reminderId) {
     setActionError("");
     try {
-      const response = await fetch(`/api/reminders/${reminderId}/stop`, {
+      const query = !user && clientId ? `?client_id=${clientId}` : "";
+      const response = await fetch(`/api/reminders/${reminderId}/stop${query}`, {
         method: "POST",
       });
       const payload = await response.json();
@@ -190,7 +263,8 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const response = await fetch(`/api/reminders/${reminderId}/proof`, {
+      const query = !user && clientId ? `?client_id=${clientId}` : "";
+      const response = await fetch(`/api/reminders/${reminderId}/proof${query}`, {
         method: "POST",
         body: formData,
       });
@@ -204,6 +278,64 @@ export default function Home() {
     } finally {
       setUploadingId(null);
     }
+  }
+
+  async function handleSignIn(event) {
+    event.preventDefault();
+    setAuthError("");
+    if (!supabase) {
+      setAuthError("Supabase auth is not configured.");
+      return;
+    }
+    setIsAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password: authPassword,
+      });
+      if (error) {
+        setAuthError(error.message);
+        return;
+      }
+      setShowAuth(false);
+      setAuthEmail("");
+      setAuthPassword("");
+    } catch (error) {
+      setAuthError("Unable to sign in.");
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }
+
+  async function handleSignUp() {
+    setAuthError("");
+    if (!supabase) {
+      setAuthError("Supabase auth is not configured.");
+      return;
+    }
+    setIsAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: authEmail,
+        password: authPassword,
+      });
+      if (error) {
+        setAuthError(error.message);
+        return;
+      }
+      setAuthError("Account created. Check your email to confirm.");
+    } catch (error) {
+      setAuthError("Unable to create account.");
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }
+
+  async function handleSignOut() {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    setShowMenu(false);
   }
 
   const primaryButtonClass =
@@ -243,7 +375,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-white">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 px-5 py-4">
-        <header className="relative flex flex-wrap items-start justify-between gap-4">
+        {/* <header className="relative flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
             <p className="inline-flex items-center gap-2 rounded-full border border-orange-400 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
               Reminder Rocket 🚀
@@ -275,6 +407,34 @@ export default function Home() {
                 >
                   Active reminders
                 </button>
+                {user ? (
+                  <div className="mt-2 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-xs text-slate-600">
+                    Signed in as
+                    <span className="mt-1 block font-semibold text-slate-900">
+                      {user.email}
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAuth(true);
+                      setShowMenu(false);
+                    }}
+                    className="mt-1 w-full rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-orange-50"
+                  >
+                    Sign in / Create account
+                  </button>
+                )}
+                {user ? (
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="mt-1 w-full rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-orange-50"
+                  >
+                    Sign out
+                  </button>
+                ) : null}
                 <a
                   href="/settings"
                   className="mt-1 block w-full rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-orange-50"
@@ -284,7 +444,7 @@ export default function Home() {
               </div>
             ) : null}
           </div>
-        </header>
+        </header> */}
 
         <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1.2fr,0.8fr]">
           <div className="rounded-3xl border border-orange-200 bg-white p-5 shadow-sm">
@@ -547,7 +707,7 @@ export default function Home() {
             </div>
           </div>
 
-          <aside className="rounded-3xl border border-orange-200 bg-white p-5 shadow-sm">
+          {/* <aside className="rounded-3xl border border-orange-200 bg-white p-5 shadow-sm">
             <h3 className="text-base font-semibold text-slate-900">
               What stays in orbit
             </h3>
@@ -570,7 +730,7 @@ export default function Home() {
                 Flexible recipients for yourself or someone special.
               </li>
             </ul>
-          </aside>
+          </aside> */}
         </section>
 
         {showReminders ? (
@@ -687,6 +847,69 @@ export default function Home() {
                   ) : null}
                 </div>
               )}
+            </div>
+          </div>
+        ) : null}
+
+        {showAuth ? (
+          <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/40 px-4">
+            <div className="w-full max-w-sm rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-slate-900">
+                  Account access
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAuth(false)}
+                  className="rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white transition hover:bg-orange-600"
+                >
+                  Close
+                </button>
+              </div>
+
+              <form className="mt-3 grid gap-3" onSubmit={handleSignIn}>
+                <label className="grid gap-1 text-xs font-medium text-slate-700">
+                  Email
+                  <input
+                    type="email"
+                    value={authEmail}
+                    onChange={(event) => setAuthEmail(event.target.value)}
+                    className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-medium text-slate-700">
+                  Password
+                  <input
+                    type="password"
+                    value={authPassword}
+                    onChange={(event) => setAuthPassword(event.target.value)}
+                    className="w-full rounded-2xl border border-orange-200 px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </label>
+                {authError ? (
+                  <p className="text-xs text-rose-500">{authError}</p>
+                ) : null}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={isAuthLoading}
+                    className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isAuthLoading ? "Signing in..." : "Sign in"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSignUp}
+                    disabled={isAuthLoading}
+                    className="rounded-full border border-orange-300 px-4 py-2 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    Create account
+                  </button>
+                </div>
+              </form>
+              <p className="mt-3 text-xs text-slate-500">
+                Continue without an account to use local device reminders only.
+              </p>
             </div>
           </div>
         ) : null}

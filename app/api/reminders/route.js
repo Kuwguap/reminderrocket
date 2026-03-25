@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../lib/emailTemplate";
+import { createSupabaseAuthClient } from "../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
 import { formatZodErrors, reminderSchema } from "../../../lib/validation";
 
@@ -87,9 +88,15 @@ async function sendConfirmationEmail(reminder) {
 }
 
 export async function GET(request) {
+  const authClient = createSupabaseAuthClient();
   const supabase = createSupabaseServerClient();
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
+  const clientId = searchParams.get("client_id");
+
+  const {
+    data: { user },
+  } = await authClient.auth.getUser();
 
   let query = supabase
     .from("reminders")
@@ -99,6 +106,14 @@ export async function GET(request) {
 
   if (status) {
     query = query.eq("status", status);
+  }
+
+  if (user) {
+    query = query.eq("user_id", user.id);
+  } else if (clientId) {
+    query = query.eq("client_id", clientId);
+  } else {
+    return NextResponse.json({ reminders: [] });
   }
 
   const { data, error } = await query;
@@ -111,6 +126,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const authClient = createSupabaseAuthClient();
   const supabase = createSupabaseServerClient();
 
   let payload = null;
@@ -132,6 +148,18 @@ export async function POST(request) {
   }
 
   const data = parsed.data;
+  const {
+    data: { user },
+  } = await authClient.auth.getUser();
+
+  const clientId = data.client_id;
+  if (!user && !clientId) {
+    return NextResponse.json(
+      { errors: { client_id: "Missing device session." } },
+      { status: 400 }
+    );
+  }
+
   const now = new Date();
   const startTime = new Date(data.start_time);
   const stopTime = data.stop_at ? new Date(data.stop_at) : null;
@@ -163,6 +191,24 @@ export async function POST(request) {
     );
   }
 
+  const hasResend =
+    Boolean(process.env.RESEND_API_KEY) && Boolean(process.env.RESEND_FROM_EMAIL);
+  const hasTwilio =
+    Boolean(process.env.TWILIO_ACCOUNT_SID) &&
+    Boolean(process.env.TWILIO_AUTH_TOKEN) &&
+    Boolean(process.env.TWILIO_PHONE_NUMBER);
+
+  const channelErrors = {};
+  if (data.email && !hasResend) {
+    channelErrors.email = "Email delivery is not configured.";
+  }
+  if (data.phone && !hasTwilio) {
+    channelErrors.phone = "SMS delivery is not configured.";
+  }
+  if (Object.keys(channelErrors).length > 0) {
+    return NextResponse.json({ errors: channelErrors }, { status: 400 });
+  }
+
   const nextRunAt =
     startTime <= now ? new Date(now.getTime() + intervalMs) : startTime;
 
@@ -178,6 +224,8 @@ export async function POST(request) {
     next_run_at: nextRunAt.toISOString(),
     stop_condition: data.stop_condition,
     stop_at: stopTime ? stopTime.toISOString() : null,
+    user_id: user ? user.id : null,
+    client_id: user ? null : clientId,
     status: "active",
   };
 

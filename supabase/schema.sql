@@ -3,6 +3,8 @@ create extension if not exists "pgcrypto";
 create table if not exists public.reminders (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
+  user_id uuid references auth.users(id) on delete set null,
+  client_id text,
   message text not null,
   recipient_name text,
   phone text,
@@ -20,8 +22,16 @@ create table if not exists public.reminders (
   completed_at timestamptz
 );
 
+alter table public.reminders
+  add column if not exists user_id uuid references auth.users(id) on delete set null;
+
+alter table public.reminders
+  add column if not exists client_id text;
+
 create index if not exists reminders_next_run_idx on public.reminders (next_run_at);
 create index if not exists reminders_status_idx on public.reminders (status);
+create index if not exists reminders_user_id_idx on public.reminders (user_id);
+create index if not exists reminders_client_id_idx on public.reminders (client_id);
 
 create table if not exists public.reminder_attempts (
   id uuid primary key default gen_random_uuid(),

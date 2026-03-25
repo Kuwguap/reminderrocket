@@ -8,6 +8,7 @@ function hasValue(value) {
 export async function GET() {
   const envStatus = {
     supabaseUrl: hasValue(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    supabaseAnonKey: hasValue(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     supabaseServiceKey: hasValue(process.env.SUPABASE_SERVICE_ROLE_KEY),
     resendKey: hasValue(process.env.RESEND_API_KEY),
     resendFrom: hasValue(process.env.RESEND_FROM_EMAIL),

@@ -230,6 +230,9 @@ serve(async () => {
   const processed: string[] = [];
 
   for (const reminder of dueReminders ?? []) {
+    let delivered = false;
+    let hasConfiguredChannel = false;
+
     const stopAt = reminder.stop_at ? new Date(reminder.stop_at) : null;
     if (reminder.stop_condition === "time" && stopAt && stopAt <= now) {
       await supabase
@@ -259,8 +262,10 @@ serve(async () => {
             "Missing Twilio env vars."
           );
         } else {
+          hasConfiguredChannel = true;
           await sendSms(reminder.phone, messageBody);
           await logAttempt(reminder.id, "sms", "sent");
+          delivered = true;
         }
       } catch (error) {
         await logAttempt(reminder.id, "sms", "failed", String(error));
@@ -277,6 +282,7 @@ serve(async () => {
             "Missing Resend env vars."
           );
         } else {
+          hasConfiguredChannel = true;
           const html = buildReminderEmail({
             title: "Reminder alert",
             subtitle: "Your reminder is active.",
@@ -298,24 +304,32 @@ serve(async () => {
           });
           await sendEmail(reminder.email, "Reminder Rocket", html);
           await logAttempt(reminder.id, "email", "sent");
+          delivered = true;
         }
       } catch (error) {
         await logAttempt(reminder.id, "email", "failed", String(error));
       }
     }
 
-    const nextRunAt = new Date(now.getTime() + intervalMs);
-    const updates: Record<string, string> = {
-      last_sent_at: nowIso,
-      next_run_at: nextRunAt.toISOString(),
-    };
+    const shouldAdvance = delivered || !hasConfiguredChannel;
 
-    if (reminder.stop_condition === "time" && stopAt && nextRunAt > stopAt) {
-      updates.status = "completed";
-      updates.completed_at = nowIso;
+    if (shouldAdvance) {
+      const nextRunAt = new Date(now.getTime() + intervalMs);
+      const updates: Record<string, string> = {
+        next_run_at: nextRunAt.toISOString(),
+      };
+
+      if (delivered) {
+        updates.last_sent_at = nowIso;
+      }
+
+      if (reminder.stop_condition === "time" && stopAt && nextRunAt > stopAt) {
+        updates.status = "completed";
+        updates.completed_at = nowIso;
+      }
+
+      await supabase.from("reminders").update(updates).eq("id", reminder.id);
     }
-
-    await supabase.from("reminders").update(updates).eq("id", reminder.id);
     processed.push(reminder.id);
   }
 

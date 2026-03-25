@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Buffer } from "node:buffer";
+import { createSupabaseAuthClient } from "../../../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../../../lib/supabaseServer";
 
 export async function POST(request, { params }) {
@@ -7,6 +8,21 @@ export async function POST(request, { params }) {
 
   if (!id) {
     return NextResponse.json({ error: "Missing reminder id." }, { status: 400 });
+  }
+
+  const authClient = createSupabaseAuthClient();
+  const { searchParams } = new URL(request.url);
+  const clientId = searchParams.get("client_id");
+
+  const {
+    data: { user },
+  } = await authClient.auth.getUser();
+
+  if (!user && !clientId) {
+    return NextResponse.json(
+      { error: "Missing device session." },
+      { status: 400 }
+    );
   }
 
   const formData = await request.formData();
@@ -20,11 +36,18 @@ export async function POST(request, { params }) {
   }
 
   const supabase = createSupabaseServerClient();
-  const { data: reminder, error: fetchError } = await supabase
+  let reminderQuery = supabase
     .from("reminders")
     .select("id, stop_condition, status")
-    .eq("id", id)
-    .single();
+    .eq("id", id);
+
+  if (user) {
+    reminderQuery = reminderQuery.eq("user_id", user.id);
+  } else {
+    reminderQuery = reminderQuery.eq("client_id", clientId);
+  }
+
+  const { data: reminder, error: fetchError } = await reminderQuery.single();
 
   if (fetchError) {
     return NextResponse.json({ error: fetchError.message }, { status: 500 });
