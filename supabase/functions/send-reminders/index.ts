@@ -112,9 +112,9 @@ async function sendKlaviyoSmsEvent(params: {
     method: "POST",
     headers: {
       Authorization: `Klaviyo-API-Key ${KLAVIYO_API_KEY}`,
-      accept: "application/json",
+      accept: "application/vnd.api+json",
       "content-type": "application/vnd.api+json",
-      revision: "2025-01-15",
+      revision: "2026-01-15",
     },
     body: JSON.stringify(payload),
   });
