@@ -11,15 +11,17 @@ const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
 const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
 const APP_BASE_URL = Deno.env.get("APP_BASE_URL") || "";
 
-const missingEnv = [
+const requiredEnv = [
   ["SUPABASE_URL", SUPABASE_URL],
   ["SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY],
-  ["RESEND_API_KEY", RESEND_API_KEY],
-  ["RESEND_FROM_EMAIL", RESEND_FROM_EMAIL],
-  ["TWILIO_ACCOUNT_SID", TWILIO_ACCOUNT_SID],
-  ["TWILIO_AUTH_TOKEN", TWILIO_AUTH_TOKEN],
-  ["TWILIO_PHONE_NUMBER", TWILIO_PHONE_NUMBER],
 ].filter(([, value]) => !value);
+
+const hasResend =
+  Boolean(RESEND_API_KEY) && Boolean(RESEND_FROM_EMAIL);
+const hasTwilio =
+  Boolean(TWILIO_ACCOUNT_SID) &&
+  Boolean(TWILIO_AUTH_TOKEN) &&
+  Boolean(TWILIO_PHONE_NUMBER);
 
 const supabase = createClient(SUPABASE_URL ?? "", SUPABASE_SERVICE_ROLE_KEY ?? "");
 
@@ -200,10 +202,10 @@ function buildReminderEmail(params: {
 }
 
 serve(async () => {
-  if (missingEnv.length > 0) {
+  if (requiredEnv.length > 0) {
     return new Response(
       JSON.stringify({
-        error: `Missing env: ${missingEnv.map(([key]) => key).join(", ")}`,
+        error: `Missing env: ${requiredEnv.map(([key]) => key).join(", ")}`,
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
@@ -249,8 +251,17 @@ serve(async () => {
 
     if (reminder.phone) {
       try {
-        await sendSms(reminder.phone, messageBody);
-        await logAttempt(reminder.id, "sms", "sent");
+        if (!hasTwilio) {
+          await logAttempt(
+            reminder.id,
+            "sms",
+            "skipped",
+            "Missing Twilio env vars."
+          );
+        } else {
+          await sendSms(reminder.phone, messageBody);
+          await logAttempt(reminder.id, "sms", "sent");
+        }
       } catch (error) {
         await logAttempt(reminder.id, "sms", "failed", String(error));
       }
@@ -258,27 +269,36 @@ serve(async () => {
 
     if (reminder.email) {
       try {
-        const html = buildReminderEmail({
-          title: "Reminder alert",
-          subtitle: "Your reminder is active.",
-          message: reminder.message,
-          details: [
-            { label: "Recipient", value: reminder.recipient_name || "You" },
-            { label: "Frequency", value: getFrequencyLabel(reminder) },
-            { label: "Next run", value: formatDateTime(reminder.next_run_at) },
-            {
-              label: "Stop condition",
-              value:
-                reminder.stop_condition === "proof"
-                  ? "Picture proof required"
-                  : `Stop at ${formatDateTime(reminder.stop_at)}`,
-            },
-          ],
-          ctaUrl: APP_BASE_URL || undefined,
-          ctaLabel: "Open Reminder Rocket",
-        });
-        await sendEmail(reminder.email, "Reminder Rocket", html);
-        await logAttempt(reminder.id, "email", "sent");
+        if (!hasResend) {
+          await logAttempt(
+            reminder.id,
+            "email",
+            "skipped",
+            "Missing Resend env vars."
+          );
+        } else {
+          const html = buildReminderEmail({
+            title: "Reminder alert",
+            subtitle: "Your reminder is active.",
+            message: reminder.message,
+            details: [
+              { label: "Recipient", value: reminder.recipient_name || "You" },
+              { label: "Frequency", value: getFrequencyLabel(reminder) },
+              { label: "Next run", value: formatDateTime(reminder.next_run_at) },
+              {
+                label: "Stop condition",
+                value:
+                  reminder.stop_condition === "proof"
+                    ? "Picture proof required"
+                    : `Stop at ${formatDateTime(reminder.stop_at)}`,
+              },
+            ],
+            ctaUrl: APP_BASE_URL || undefined,
+            ctaLabel: "Open Reminder Rocket",
+          });
+          await sendEmail(reminder.email, "Reminder Rocket", html);
+          await logAttempt(reminder.id, "email", "sent");
+        }
       } catch (error) {
         await logAttempt(reminder.id, "email", "failed", String(error));
       }

@@ -61,6 +61,8 @@ export default function Home() {
   const [listError, setListError] = useState("");
   const [actionError, setActionError] = useState("");
   const [uploadingId, setUploadingId] = useState(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showReminders, setShowReminders] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -235,42 +237,59 @@ export default function Home() {
     return option?.label ?? reminder.frequency_type;
   };
 
-  const visibleReminders = reminders.slice(0, 2);
+  const visibleReminders = reminders.slice(0, 4);
   const hiddenReminderCount = Math.max(reminders.length - visibleReminders.length, 0);
 
   return (
-    <main className="h-screen overflow-hidden bg-white">
-      <div className="mx-auto flex h-full max-w-6xl flex-col gap-6 px-6 py-6">
-        <header className="space-y-2">
-          <p className="inline-flex items-center gap-2 rounded-full border border-orange-400 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
-            Reminder Rocket
-          </p>
-          <h1 className="text-3xl font-semibold text-slate-900 sm:text-4xl">
-            Start now, stay on track.
-          </h1>
-          <p className="max-w-2xl text-sm text-slate-600">
-            Launch reminders fast, stay accountable, and finish the mission.
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <button type="button" className={primaryButtonSmallClass}>
-              Start now
-            </button>
-            <button type="button" className={primaryButtonSmallClass}>
-              Schedule for later
-            </button>
-            <a
-              href="/settings"
+    <main className="min-h-screen bg-white">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 px-5 py-4">
+        <header className="relative flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1">
+            <p className="inline-flex items-center gap-2 rounded-full border border-orange-400 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
+              Reminder Rocket 🚀
+            </p>
+            <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
+              Start now, stay on track.
+            </h1>
+            <p className="max-w-2xl text-sm text-slate-600">
+              Launch reminders fast, stay accountable, and finish the mission.
+            </p>
+          </div>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowMenu((prev) => !prev)}
               className="rounded-full border border-orange-300 px-4 py-2 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600"
             >
-              Settings
-            </a>
+              Menu
+            </button>
+            {showMenu ? (
+              <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-orange-200 bg-white p-2 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReminders(true);
+                    setShowMenu(false);
+                  }}
+                  className="w-full rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-orange-50"
+                >
+                  Active reminders
+                </button>
+                <a
+                  href="/settings"
+                  className="mt-1 block w-full rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-orange-50"
+                >
+                  Settings
+                </a>
+              </div>
+            ) : null}
           </div>
         </header>
 
-        <section className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[1.15fr,0.85fr]">
+        <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1.2fr,0.8fr]">
           <div className="rounded-3xl border border-orange-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-base font-semibold text-slate-900">
                 Create a reminder
               </h2>
               <span className="rounded-full border border-orange-400 px-3 py-1 text-xs font-semibold text-orange-500">
@@ -278,7 +297,7 @@ export default function Home() {
               </span>
             </div>
 
-            <form className="mt-4 grid gap-3" onSubmit={handleSubmit}>
+            <form className="mt-3 grid gap-2" onSubmit={handleSubmit}>
               {submitError ? (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-600">
                   {submitError}
@@ -293,7 +312,7 @@ export default function Home() {
               <label className="grid gap-1 text-xs font-medium text-slate-700">
                 Reminder message
                 <textarea
-                  rows={3}
+                  rows={2}
                   placeholder="Remind me to..."
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
@@ -505,114 +524,26 @@ export default function Home() {
               </button>
             </form>
 
-            <div className="mt-4 border-t border-orange-200 pt-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-slate-900">
-                  Active reminders
-                </h3>
+            <div className="mt-3 rounded-2xl border border-orange-200 px-3 py-2 text-xs">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold text-slate-900">
+                  Active reminders:{" "}
+                  {isLoadingReminders ? "Loading..." : reminders.length}
+                </span>
                 <button
                   type="button"
-                  onClick={loadReminders}
-                  className={primaryButtonSmallClass}
+                  onClick={() => setShowReminders(true)}
+                  className="rounded-full border border-orange-300 px-3 py-1 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600"
                 >
-                  Refresh
+                  View
                 </button>
               </div>
               {listError ? (
-                <p className="mt-2 text-xs text-rose-500">{listError}</p>
+                <p className="mt-1 text-xs text-rose-500">{listError}</p>
               ) : null}
               {actionError ? (
-                <p className="mt-2 text-xs text-rose-500">{actionError}</p>
+                <p className="mt-1 text-xs text-rose-500">{actionError}</p>
               ) : null}
-              {isLoadingReminders ? (
-                <p className="mt-3 text-sm text-slate-500">
-                  Loading reminders...
-                </p>
-              ) : reminders.length === 0 ? (
-                <p className="mt-3 text-sm text-slate-500">
-                  No active reminders yet.
-                </p>
-              ) : (
-                <div className="mt-3 grid gap-3">
-                  {visibleReminders.map((reminder) => (
-                    <div
-                      key={reminder.id}
-                      className="rounded-2xl border border-orange-200 p-3"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <p className="text-sm font-semibold text-slate-900">
-                            {reminder.message}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            Recipient: {reminder.recipient_name || "Recipient"}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            Starts: {formatDateTime(reminder.start_time)}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            Next run: {formatDateTime(reminder.next_run_at)}
-                          </p>
-                          {reminder.stop_condition === "time" ? (
-                            <p className="text-xs text-slate-500">
-                              Stops: {formatDateTime(reminder.stop_at)}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-slate-500">
-                              Stop condition: Proof required
-                            </p>
-                          )}
-                          {reminder.proof_url ? (
-                            <p className="text-xs text-emerald-600">
-                              Proof uploaded.
-                            </p>
-                          ) : null}
-                        </div>
-                        {reminder.stop_condition === "proof" &&
-                        !reminder.proof_url ? null : (
-                          <button
-                            type="button"
-                            onClick={() => handleStopReminder(reminder.id)}
-                            className={primaryButtonSmallClass}
-                          >
-                            Stop
-                          </button>
-                        )}
-                      </div>
-
-                      {reminder.stop_condition === "proof" &&
-                      !reminder.proof_url ? (
-                        <div className="mt-3 grid gap-2">
-                          <p className="text-xs text-slate-500">
-                            Upload proof to complete this reminder.
-                          </p>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(event) =>
-                              handleProofUpload(
-                                reminder.id,
-                                event.target.files?.[0]
-                              )
-                            }
-                            className="text-xs text-slate-600"
-                          />
-                          {uploadingId === reminder.id ? (
-                            <p className="text-xs text-slate-500">
-                              Uploading...
-                            </p>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
-                  {hiddenReminderCount > 0 ? (
-                    <p className="text-xs text-slate-500">
-                      Showing latest 2 of {reminders.length} reminders.
-                    </p>
-                  ) : null}
-                </div>
-              )}
             </div>
           </div>
 
@@ -641,6 +572,124 @@ export default function Home() {
             </ul>
           </aside>
         </section>
+
+        {showReminders ? (
+          <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-950/40 px-4">
+            <div className="w-full max-w-xl rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-slate-900">
+                  Active reminders
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={loadReminders}
+                    className="rounded-full border border-orange-300 px-3 py-1 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600"
+                  >
+                    Refresh
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowReminders(false)}
+                    className="rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white transition hover:bg-orange-600"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+
+              {listError ? (
+                <p className="mt-2 text-xs text-rose-500">{listError}</p>
+              ) : null}
+              {actionError ? (
+                <p className="mt-2 text-xs text-rose-500">{actionError}</p>
+              ) : null}
+
+              {isLoadingReminders ? (
+                <p className="mt-3 text-sm text-slate-500">
+                  Loading reminders...
+                </p>
+              ) : reminders.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-500">
+                  No active reminders yet.
+                </p>
+              ) : (
+                <div className="mt-3 grid gap-3">
+                  {visibleReminders.map((reminder) => (
+                    <div
+                      key={reminder.id}
+                      className="rounded-2xl border border-orange-200 p-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {reminder.message}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Recipient: {reminder.recipient_name || "Recipient"}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Next run: {formatDateTime(reminder.next_run_at)}
+                          </p>
+                          {reminder.stop_condition === "proof" ? (
+                            <p className="text-xs text-slate-500">
+                              Proof required
+                            </p>
+                          ) : (
+                            <p className="text-xs text-slate-500">
+                              Stops: {formatDateTime(reminder.stop_at)}
+                            </p>
+                          )}
+                        </div>
+                        {reminder.stop_condition === "proof" &&
+                        !reminder.proof_url ? null : (
+                          <button
+                            type="button"
+                            onClick={() => handleStopReminder(reminder.id)}
+                            className={primaryButtonSmallClass}
+                          >
+                            Stop
+                          </button>
+                        )}
+                      </div>
+
+                      {reminder.stop_condition === "proof" &&
+                      !reminder.proof_url ? (
+                        <div className="mt-2 grid gap-2">
+                          <p className="text-xs text-slate-500">
+                            Upload proof to complete this reminder.
+                          </p>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(event) =>
+                              handleProofUpload(
+                                reminder.id,
+                                event.target.files?.[0]
+                              )
+                            }
+                            className="text-xs text-slate-600"
+                          />
+                          {uploadingId === reminder.id ? (
+                            <p className="text-xs text-slate-500">
+                              Uploading...
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                  {hiddenReminderCount > 0 ? (
+                    <p className="text-xs text-slate-500">
+                      Showing latest {visibleReminders.length} of{" "}
+                      {reminders.length} reminders.
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
     </main>
   );

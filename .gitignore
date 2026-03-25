@@ -18,6 +18,9 @@ pnpm-debug.log*
 # vercel
 .vercel/
 
+# supabase
+supabase/.temp/
+
 # misc
 .DS_Store
 Thumbs.db

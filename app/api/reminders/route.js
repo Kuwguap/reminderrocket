@@ -63,7 +63,7 @@ async function sendConfirmationEmail(reminder) {
     details: [
       { label: "Recipient", value: reminder.recipient_name || "You" },
       { label: "Frequency", value: getFrequencyLabel(reminder) },
-      { label: "Start time", value: formatDateTime(reminder.start_time) },
+      { label: "First reminder", value: formatDateTime(reminder.next_run_at) },
       {
         label: "Stop condition",
         value:
@@ -132,6 +132,7 @@ export async function POST(request) {
   }
 
   const data = parsed.data;
+  const now = new Date();
   const startTime = new Date(data.start_time);
   const stopTime = data.stop_at ? new Date(data.stop_at) : null;
 
@@ -162,6 +163,9 @@ export async function POST(request) {
     );
   }
 
+  const nextRunAt =
+    startTime <= now ? new Date(now.getTime() + intervalMs) : startTime;
+
   const insertPayload = {
     message: data.message,
     recipient_name: data.recipient_name,
@@ -171,7 +175,7 @@ export async function POST(request) {
     frequency_value: data.frequency_type === "custom" ? data.frequency_value : null,
     frequency_unit: data.frequency_type === "custom" ? data.frequency_unit : null,
     start_time: startTime.toISOString(),
-    next_run_at: startTime.toISOString(),
+    next_run_at: nextRunAt.toISOString(),
     stop_condition: data.stop_condition,
     stop_at: stopTime ? stopTime.toISOString() : null,
     status: "active",
