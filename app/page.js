@@ -118,11 +118,17 @@ export default function Home() {
       return;
     }
     let isActive = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (isActive) {
-        setUser(data.user ?? null);
+
+    const syncSessionUser = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!isActive) {
+        return;
       }
-    });
+      setUser(data.session?.user ?? null);
+    };
+
+    syncSessionUser();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (isActive) {
@@ -130,8 +136,10 @@ export default function Home() {
         }
       }
     );
+    const sessionPoll = setInterval(syncSessionUser, 60 * 1000);
     return () => {
       isActive = false;
+      clearInterval(sessionPoll);
       subscription?.unsubscribe();
     };
   }, [supabase]);
@@ -189,7 +197,7 @@ export default function Home() {
 
     const selectedFrequency = annoyMode ? "annoy" : frequency;
     const payload = {
-      client_id: user ? null : clientId,
+      client_id: clientId || null,
       message: message.trim(),
       recipient_name: "You",
       phone,
@@ -498,9 +506,13 @@ export default function Home() {
                 Create a reminder
               </h2>
               {user ? (
-                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
-                  Signed in
-                </span>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:border-emerald-400 hover:text-emerald-800"
+                >
+                  Log out
+                </button>
               ) : (
                 <Link
                   href="/sign-in"
