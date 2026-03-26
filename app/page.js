@@ -512,7 +512,7 @@ export default function Home() {
               ) : null}
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
-                <p className="text-center text-[11px] font-extrabold uppercase tracking-[0.2em] text-orange-600">
+                <p className="text-center text-[10px] font-extrabold uppercase tracking-[0.18em] text-orange-600">
                   Step 1 — Reminder
                 </p>
                 <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
@@ -529,10 +529,10 @@ export default function Home() {
               </div>
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
-                <p className="text-center text-[11px] font-extrabold uppercase tracking-[0.2em] text-orange-600">
+                <p className="text-center text-[10px] font-extrabold uppercase tracking-[0.18em] text-orange-600">
                   Step 2 — Frequency
                 </p>
-                <div className="text-center text-[11px] font-semibold text-slate-800">
+                <div className="text-[11px] font-medium text-slate-700">
                   How often (tap one)
                   <div
                     className={`mt-1 flex flex-nowrap gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${annoyMode ? "pointer-events-none opacity-40" : ""}`}
@@ -617,11 +617,11 @@ export default function Home() {
               </div>
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
-                <p className="text-center text-[11px] font-extrabold uppercase tracking-[0.2em] text-orange-600">
+                <p className="text-center text-[10px] font-extrabold uppercase tracking-[0.18em] text-orange-600">
                   Step 3 — Contact
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <label className="grid gap-[3px] text-center text-[11px] font-semibold text-slate-800 md:text-left">
+                  <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                     Text Rocket
                     <input
                       type="tel"
@@ -633,7 +633,7 @@ export default function Home() {
                     {renderError("phone")}
                   </label>
 
-                  <label className="grid gap-[3px] text-center text-[11px] font-semibold text-slate-800 md:text-left">
+                  <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                     Email Rocket
                     <input
                       type="email"
