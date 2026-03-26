@@ -55,7 +55,7 @@ export default function Home() {
   const [customFrequencyValue, setCustomFrequencyValue] = useState("");
   const [customFrequencyUnit, setCustomFrequencyUnit] = useState("minutes");
   const [scheduledAt, setScheduledAt] = useState("");
-  const [stopCondition, setStopCondition] = useState("time");
+  const [stopCondition, setStopCondition] = useState("proof");
   const [stopAt, setStopAt] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
@@ -238,7 +238,7 @@ export default function Home() {
       setAnnoyMode(false);
       setStartTiming("now");
       setScheduledAt("");
-      setStopCondition("time");
+      setStopCondition("proof");
       setStopAt("");
       setRecipientMode("me");
       await loadReminders();
