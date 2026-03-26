@@ -533,10 +533,7 @@ export default function Home() {
                 </label>
 
                 <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-white px-[10px] py-[10px]">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-[11px] font-semibold text-slate-900">
-                      Who are we reminding?
-                    </p>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                     <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-white p-1">
                       <button
                         type="button"
