@@ -379,7 +379,6 @@ export default function Home() {
   const segmentedButtonClass =
     "cursor-pointer rounded-full border px-[14px] py-[6px] text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500";
   const isForMe = recipientMode === "me";
-  const recipientName = isForMe ? "You" : specialRecipientName;
 
   const renderError = (field) =>
     formErrors[field] ? (
@@ -565,17 +564,20 @@ export default function Home() {
                       </button>
                     </div>
                   </div>
+                {!isForMe ? (
                   <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                     Recipient name
                     <input
                       type="text"
-                      placeholder={isForMe ? "You" : "Someone special"}
+                      placeholder="Someone special"
                       className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      disabled={isForMe}
-                      value={recipientName}
-                      onChange={(event) => setSpecialRecipientName(event.target.value)}
+                      value={specialRecipientName}
+                      onChange={(event) =>
+                        setSpecialRecipientName(event.target.value)
+                      }
                     />
                   </label>
+                ) : null}
                 </div>
               </div>
 
@@ -760,11 +762,7 @@ export default function Home() {
                       />
                       {renderError("stop_at")}
                     </label>
-                  ) : (
-                    <p className="text-[11px] text-slate-500">
-                      Proof uploads after creation.
-                    </p>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
