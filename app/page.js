@@ -217,13 +217,24 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
-      const responseBody = await response.json();
+      const rawText = await response.text();
+      let responseBody = null;
+      try {
+        responseBody = rawText ? JSON.parse(rawText) : null;
+      } catch (_error) {
+        responseBody = null;
+      }
 
       if (!response.ok) {
         if (responseBody?.errors) {
           setFormErrors(responseBody.errors);
         }
-        setSubmitError(responseBody?.error || "Unable to launch reminder.");
+        setSubmitError(
+          responseBody?.error ||
+            `Unable to launch reminder (HTTP ${response.status}).${
+              rawText ? ` ${rawText.slice(0, 220)}` : ""
+            }`
+        );
         return;
       }
 
