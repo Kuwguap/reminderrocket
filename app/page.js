@@ -46,11 +46,9 @@ const stopOptions = [
 
 export default function Home() {
   const [quoteIndex, setQuoteIndex] = useState(0);
-  const [recipientMode, setRecipientMode] = useState("me");
   const [frequency, setFrequency] = useState("hourly");
   const [annoyMode, setAnnoyMode] = useState(false);
   const [startTiming, setStartTiming] = useState("now");
-  const [specialRecipientName, setSpecialRecipientName] = useState("");
   const [message, setMessage] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -193,7 +191,7 @@ export default function Home() {
     const payload = {
       client_id: user ? null : clientId,
       message: message.trim(),
-      recipient_name: (recipientMode === "me" ? "You" : specialRecipientName).trim(),
+      recipient_name: "You",
       phone,
       email,
       frequency_type: selectedFrequency,
@@ -376,9 +374,6 @@ export default function Home() {
     "cursor-pointer rounded-full bg-orange-500 px-[22px] py-[10px] text-[13px] font-semibold text-white shadow-sm transition hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-70";
   const primaryButtonSmallClass =
     "cursor-pointer rounded-full bg-orange-500 px-[14px] py-[6px] text-[11px] font-semibold text-white transition hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-70";
-  const segmentedButtonClass =
-    "cursor-pointer rounded-full border px-[14px] py-[6px] text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500";
-  const isForMe = recipientMode === "me";
 
   const renderError = (field) =>
     formErrors[field] ? (
@@ -531,51 +526,6 @@ export default function Home() {
                   />
                   {renderError("message")}
                 </label>
-
-                <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-white px-[10px] py-[10px]">
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-white p-1">
-                      <button
-                        type="button"
-                        onClick={() => setRecipientMode("me")}
-                        aria-pressed={isForMe}
-                        className={`${segmentedButtonClass} ${
-                          isForMe
-                            ? "border-orange-500 bg-orange-500 text-white"
-                            : "border-transparent text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        For me
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRecipientMode("someone")}
-                        aria-pressed={!isForMe}
-                        className={`${segmentedButtonClass} ${
-                          !isForMe
-                            ? "border-orange-500 bg-orange-500 text-white"
-                            : "border-transparent text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        Someone special
-                      </button>
-                    </div>
-                  </div>
-                {!isForMe ? (
-                  <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                    Recipient name
-                    <input
-                      type="text"
-                      placeholder="Someone special"
-                      className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      value={specialRecipientName}
-                      onChange={(event) =>
-                        setSpecialRecipientName(event.target.value)
-                      }
-                    />
-                  </label>
-                ) : null}
-                </div>
               </div>
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
