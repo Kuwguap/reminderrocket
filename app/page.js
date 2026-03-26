@@ -596,22 +596,6 @@ export default function Home() {
                     <span className="font-semibold text-slate-900">
                       Annoy me until done
                     </span>
-                    <span className="text-[10px] leading-snug text-slate-600">
-                      Escalating texts on a fixed cadence: first every{" "}
-                      <strong className="font-semibold text-slate-800">
-                        5 minutes
-                      </strong>
-                      , then every{" "}
-                      <strong className="font-semibold text-slate-800">
-                        15 minutes
-                      </strong>
-                      , then{" "}
-                      <strong className="font-semibold text-slate-800">
-                        hourly
-                      </strong>
-                      . Tone ramps from a gentle nudge → “You’re ignoring
-                      this.” → “Last warning.”
-                    </span>
                   </span>
                 </label>
 
