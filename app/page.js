@@ -512,7 +512,7 @@ export default function Home() {
               ) : null}
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
-                <p className="text-center text-[10px] font-extrabold uppercase tracking-[0.18em] text-orange-600">
+                <p className="rounded-2xl border border-orange-300 bg-white px-3 py-2 text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600 shadow-sm">
                   Step 1 — Reminder
                 </p>
                 <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
@@ -529,7 +529,7 @@ export default function Home() {
               </div>
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
-                <p className="text-center text-[10px] font-extrabold uppercase tracking-[0.18em] text-orange-600">
+                <p className="rounded-2xl border border-orange-300 bg-white px-3 py-2 text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600 shadow-sm">
                   Step 2 — Frequency
                 </p>
                 <div className="text-[11px] font-medium text-slate-700">
@@ -617,7 +617,7 @@ export default function Home() {
               </div>
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
-                <p className="text-center text-[10px] font-extrabold uppercase tracking-[0.18em] text-orange-600">
+                <p className="rounded-2xl border border-orange-300 bg-white px-3 py-2 text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600 shadow-sm">
                   Step 3 — Contact
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
