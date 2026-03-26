@@ -614,6 +614,72 @@ export default function Home() {
                     </span>
                   </span>
                 </label>
+
+                <div className="grid gap-[10px] rounded-2xl border border-orange-100 bg-white px-[10px] py-[10px] md:grid-cols-2">
+                  <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
+                    Start time
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setStartTiming("now")}
+                        className={`${primaryButtonSmallClass} ${
+                          startTiming === "now" ? "" : "opacity-70"
+                        }`}
+                      >
+                        Start now
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStartTiming("schedule")}
+                        className={`${primaryButtonSmallClass} ${
+                          startTiming === "schedule" ? "" : "opacity-70"
+                        }`}
+                      >
+                        Schedule
+                      </button>
+                    </div>
+                    {startTiming === "schedule" ? (
+                      <label className="grid gap-[3px] text-[11px] font-medium text-slate-600">
+                        Scheduled start
+                        <input
+                          type="datetime-local"
+                          value={scheduledAt}
+                          onChange={(event) => setScheduledAt(event.target.value)}
+                          className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                        {renderError("start_time")}
+                      </label>
+                    ) : null}
+                  </div>
+
+                  <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
+                    Stop condition
+                    <select
+                      value={stopCondition}
+                      onChange={(event) => setStopCondition(event.target.value)}
+                      className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    >
+                      {stopOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    {stopCondition === "time" ? (
+                      <label className="grid gap-[3px] text-[11px] font-medium text-slate-600">
+                        Stop time
+                        <input
+                          type="datetime-local"
+                          value={stopAt}
+                          onChange={(event) => setStopAt(event.target.value)}
+                          className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                        {renderError("stop_at")}
+                      </label>
+                    ) : null}
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
@@ -644,72 +710,6 @@ export default function Home() {
                     />
                     {renderError("email")}
                   </label>
-                </div>
-              </div>
-
-              <div className="grid gap-[10px] rounded-2xl border border-orange-100 px-[10px] py-[8px] md:grid-cols-2">
-                <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                  Start time
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setStartTiming("now")}
-                      className={`${primaryButtonSmallClass} ${
-                        startTiming === "now" ? "" : "opacity-70"
-                      }`}
-                    >
-                      Start now
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStartTiming("schedule")}
-                      className={`${primaryButtonSmallClass} ${
-                        startTiming === "schedule" ? "" : "opacity-70"
-                      }`}
-                    >
-                      Schedule
-                    </button>
-                  </div>
-                  {startTiming === "schedule" ? (
-                    <label className="grid gap-[3px] text-[11px] font-medium text-slate-600">
-                      Scheduled start
-                      <input
-                        type="datetime-local"
-                        value={scheduledAt}
-                        onChange={(event) => setScheduledAt(event.target.value)}
-                        className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      />
-                      {renderError("start_time")}
-                    </label>
-                  ) : null}
-                </div>
-
-                <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                  Stop condition
-                  <select
-                    value={stopCondition}
-                    onChange={(event) => setStopCondition(event.target.value)}
-                    className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  >
-                    {stopOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-
-                  {stopCondition === "time" ? (
-                    <label className="grid gap-[3px] text-[11px] font-medium text-slate-600">
-                      Stop time
-                      <input
-                        type="datetime-local"
-                        value={stopAt}
-                        onChange={(event) => setStopAt(event.target.value)}
-                        className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                      />
-                      {renderError("stop_at")}
-                    </label>
-                  ) : null}
                 </div>
               </div>
 
