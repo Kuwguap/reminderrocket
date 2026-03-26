@@ -242,7 +242,6 @@ export default function Home() {
       setMessage("");
       setPhone("");
       setEmail("");
-      setSpecialRecipientName("");
       setFrequency("hourly");
       setCustomFrequencyValue("");
       setCustomFrequencyUnit("minutes");
@@ -251,7 +250,6 @@ export default function Home() {
       setScheduledAt("");
       setStopCondition("proof");
       setStopAt("");
-      setRecipientMode("me");
       await loadReminders();
       setShowSuccessModal(true);
     } catch (error) {
