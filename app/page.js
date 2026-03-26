@@ -542,7 +542,7 @@ export default function Home() {
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
                 <p className="text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600">
-                  Step 2 — Frequency
+                  Step 2 — Start
                 </p>
                 <div className="text-[11px] font-medium text-slate-700">
                   How often (tap one)
