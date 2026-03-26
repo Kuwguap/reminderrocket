@@ -94,6 +94,7 @@ export async function POST(request) {
           uploadUrl: null,
           nextRunAt: new Date().toISOString(),
           nextRunAtLabel: new Date().toLocaleString(),
+          tone: null,
         });
 
         results.sms = phone

@@ -14,6 +14,9 @@ const FREQUENCY_INTERVALS_MS = {
 
 function getIntervalMs(frequencyType, frequencyValue, frequencyUnit) {
   if (frequencyType !== "custom") {
+    if (frequencyType === "annoy") {
+      return 5 * 60 * 1000;
+    }
     return FREQUENCY_INTERVALS_MS[frequencyType];
   }
 
@@ -31,6 +34,9 @@ function getIntervalMs(frequencyType, frequencyValue, frequencyUnit) {
 }
 
 function getFrequencyLabel(reminder) {
+  if (reminder.frequency_type === "annoy") {
+    return "Annoy me until done";
+  }
   if (reminder.frequency_type === "custom") {
     return `Every ${reminder.frequency_value} ${reminder.frequency_unit}`;
   }
@@ -46,7 +52,9 @@ function formatDateTime(value) {
   if (!value) {
     return "—";
   }
-  return new Date(value).toLocaleString();
+  return new Date(value).toLocaleString("en-US", {
+    timeZone: "America/New_York",
+  });
 }
 
 function buildUploadUrl(reminder) {
@@ -72,7 +80,7 @@ async function sendConfirmationEmail(reminder) {
   const resend = new Resend(resendApiKey);
   const html = buildReminderEmail({
     title: "Reminder scheduled",
-    subtitle: "Your reminder is ready to launch.",
+    subtitle: null,
     message: reminder.message,
     details: [
       { label: "Recipient", value: reminder.recipient_name || "You" },
@@ -87,7 +95,7 @@ async function sendConfirmationEmail(reminder) {
       },
     ],
     ctaUrl: process.env.APP_BASE_URL || undefined,
-    ctaLabel: "View reminders",
+    ctaLabel: "Complete the mission",
     secondaryCtaUrl:
       reminder.stop_condition === "proof" ? buildUploadUrl(reminder) : undefined,
     secondaryCtaLabel: "Upload receipt",

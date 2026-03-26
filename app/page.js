@@ -16,21 +16,25 @@ const frequencyOptions = [
   {
     id: "hourly",
     label: "Every hour",
+    shortLabel: "Hourly",
     detail: "Best for short, urgent tasks.",
   },
   {
     id: "every-3-hours",
     label: "Every 3 hours",
+    shortLabel: "3 hr",
     detail: "Steady check-ins across the day.",
   },
   {
     id: "daily",
     label: "Daily",
+    shortLabel: "Daily",
     detail: "A single prompt each day.",
   },
   {
     id: "custom",
     label: "Custom",
+    shortLabel: "Custom",
     detail: "Pick your own interval.",
   },
 ];
@@ -44,6 +48,7 @@ export default function Home() {
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [recipientMode, setRecipientMode] = useState("me");
   const [frequency, setFrequency] = useState("hourly");
+  const [annoyMode, setAnnoyMode] = useState(false);
   const [startTiming, setStartTiming] = useState("now");
   const [specialRecipientName, setSpecialRecipientName] = useState("");
   const [message, setMessage] = useState("");
@@ -58,6 +63,7 @@ export default function Home() {
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [reminders, setReminders] = useState([]);
   const [isLoadingReminders, setIsLoadingReminders] = useState(true);
   const [listError, setListError] = useState("");
@@ -183,15 +189,18 @@ export default function Home() {
     const stopTime =
       stopCondition === "time" && stopAt ? new Date(stopAt) : null;
 
+    const selectedFrequency = annoyMode ? "annoy" : frequency;
     const payload = {
       client_id: user ? null : clientId,
       message: message.trim(),
       recipient_name: (recipientMode === "me" ? "You" : specialRecipientName).trim(),
       phone,
       email,
-      frequency_type: frequency,
-      frequency_value: frequency === "custom" ? customFrequencyValue : null,
-      frequency_unit: frequency === "custom" ? customFrequencyUnit : null,
+      frequency_type: selectedFrequency,
+      frequency_value:
+        !annoyMode && frequency === "custom" ? customFrequencyValue : null,
+      frequency_unit:
+        !annoyMode && frequency === "custom" ? customFrequencyUnit : null,
       start_time: startTime ? startTime.toISOString() : "",
       stop_condition: stopCondition,
       stop_at: stopTime ? stopTime.toISOString() : null,
@@ -220,7 +229,7 @@ export default function Home() {
         return;
       }
 
-      setSubmitSuccess("Reminder launched.");
+      setSubmitSuccess("");
       setMessage("");
       setPhone("");
       setEmail("");
@@ -228,12 +237,14 @@ export default function Home() {
       setFrequency("hourly");
       setCustomFrequencyValue("");
       setCustomFrequencyUnit("minutes");
+      setAnnoyMode(false);
       setStartTiming("now");
       setScheduledAt("");
       setStopCondition("time");
       setStopAt("");
       setRecipientMode("me");
       await loadReminders();
+      setShowSuccessModal(true);
     } catch (error) {
       setSubmitError("Something went wrong while creating the reminder.");
     } finally {
@@ -379,10 +390,15 @@ export default function Home() {
     if (!value) {
       return "—";
     }
-    return new Date(value).toLocaleString();
+    return new Date(value).toLocaleString("en-US", {
+      timeZone: "America/New_York",
+    });
   };
 
   const formatFrequency = (reminder) => {
+    if (reminder.frequency_type === "annoy") {
+      return "Annoy me until done";
+    }
     if (reminder.frequency_type === "custom") {
       return `Every ${reminder.frequency_value} ${reminder.frequency_unit}`;
     }
@@ -489,7 +505,7 @@ export default function Home() {
               )}
             </div>
 
-            <form className="mt-[10px] grid gap-[6px]" onSubmit={handleSubmit}>
+            <form className="mt-[10px] grid gap-[8px]" onSubmit={handleSubmit}>
               {submitError ? (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 px-[14px] py-[10px] text-[11px] text-rose-600">
                   {submitError}
@@ -501,114 +517,98 @@ export default function Home() {
                 </div>
               ) : null}
 
-              <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                <span className="sr-only">Reminder message</span>
-                <textarea
-                  rows={2}
-                  placeholder="Remind me to..."
-                  value={message}
-                  onChange={(event) => setMessage(event.target.value)}
-                  className="w-full resize-none rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
-                {renderError("message")}
-              </label>
-
-              <div className="grid gap-[6px] rounded-2xl border border-orange-200 px-[10px] py-[10px]">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold text-slate-900">
-                    Who are we reminding?
-                  </p>
-                  <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-white p-1">
-                    <button
-                      type="button"
-                      onClick={() => setRecipientMode("me")}
-                      aria-pressed={isForMe}
-                      className={`${segmentedButtonClass} ${
-                        isForMe
-                          ? "border-orange-500 bg-orange-500 text-white"
-                          : "border-transparent text-slate-600 hover:text-slate-900"
-                      }`}
-                    >
-                      For me
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRecipientMode("someone")}
-                      aria-pressed={!isForMe}
-                      className={`${segmentedButtonClass} ${
-                        !isForMe
-                          ? "border-orange-500 bg-orange-500 text-white"
-                          : "border-transparent text-slate-600 hover:text-slate-900"
-                      }`}
-                    >
-                      Someone special
-                    </button>
-                  </div>
-                </div>
+              <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-600">
+                  Step 1 — Reminder
+                </p>
                 <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                  Recipient name
-                  <input
-                    type="text"
-                    placeholder={isForMe ? "You" : "Someone special"}
-                    className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    disabled={isForMe}
-                    value={recipientName}
-                    onChange={(event) => setSpecialRecipientName(event.target.value)}
+                  <span className="sr-only">Reminder message</span>
+                  <textarea
+                    rows={2}
+                    placeholder="Remind me to..."
+                    value={message}
+                    onChange={(event) => setMessage(event.target.value)}
+                    className="w-full resize-none rounded-2xl border border-orange-200 bg-white px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
-                </label>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                  Text Rocket
-                  <input
-                    type="tel"
-                    placeholder="(555) 123-4567"
-                    value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
-                    className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                  {renderError("phone")}
+                  {renderError("message")}
                 </label>
 
-                <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                  Email Rocket
-                  <input
-                    type="email"
-                    placeholder="rocket@launch.com"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                  {renderError("email")}
-                </label>
-              </div>
-
-              <div className="grid gap-[6px] text-[11px] font-medium text-slate-700">
-                Frequency
-                <div className="grid gap-[6px] sm:grid-cols-2">
-                  {frequencyOptions.map((option) => {
-                    const isActive = frequency === option.id;
-                    return (
+                <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-white px-[10px] py-[10px]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[11px] font-semibold text-slate-900">
+                      Who are we reminding?
+                    </p>
+                    <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-white p-1">
                       <button
-                        key={option.id}
                         type="button"
-                        onClick={() => setFrequency(option.id)}
-                        aria-pressed={isActive}
-                        className={`rounded-2xl border px-[10px] py-[6px] text-left text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
-                          isActive
-                            ? "border-orange-400 bg-orange-50 text-orange-500"
-                            : "border-orange-200 text-slate-700 hover:border-orange-300"
+                        onClick={() => setRecipientMode("me")}
+                        aria-pressed={isForMe}
+                        className={`${segmentedButtonClass} ${
+                          isForMe
+                            ? "border-orange-500 bg-orange-500 text-white"
+                            : "border-transparent text-slate-600 hover:text-slate-900"
                         }`}
                       >
-                        <span className="block text-[11px] font-semibold">
-                          {option.label}
-                        </span>
+                        For me
                       </button>
-                    );
-                  })}
+                      <button
+                        type="button"
+                        onClick={() => setRecipientMode("someone")}
+                        aria-pressed={!isForMe}
+                        className={`${segmentedButtonClass} ${
+                          !isForMe
+                            ? "border-orange-500 bg-orange-500 text-white"
+                            : "border-transparent text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        Someone special
+                      </button>
+                    </div>
+                  </div>
+                  <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
+                    Recipient name
+                    <input
+                      type="text"
+                      placeholder={isForMe ? "You" : "Someone special"}
+                      className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      disabled={isForMe}
+                      value={recipientName}
+                      onChange={(event) => setSpecialRecipientName(event.target.value)}
+                    />
+                  </label>
                 </div>
-                {frequency === "custom" && (
+              </div>
+
+              <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-600">
+                  Step 2 — Frequency
+                </p>
+                <div className="text-[11px] font-medium text-slate-700">
+                  How often (tap one)
+                  <div
+                    className={`mt-1 flex flex-nowrap gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${annoyMode ? "pointer-events-none opacity-40" : ""}`}
+                  >
+                    {frequencyOptions.map((option) => {
+                      const isActive = frequency === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => setFrequency(option.id)}
+                          aria-pressed={isActive}
+                          className={`shrink-0 rounded-full border px-2.5 py-1 text-center text-[10px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 sm:px-3 sm:text-[11px] ${
+                            isActive
+                              ? "border-orange-400 bg-orange-50 text-orange-500"
+                              : "border-orange-200 bg-white text-slate-700 hover:border-orange-300"
+                          }`}
+                        >
+                          {option.shortLabel ?? option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {!annoyMode && frequency === "custom" ? (
                   <div className="grid gap-[6px] sm:grid-cols-[1fr,120px]">
                     <input
                       type="number"
@@ -619,25 +619,86 @@ export default function Home() {
                       onChange={(event) =>
                         setCustomFrequencyValue(event.target.value)
                       }
-                      className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
                     <select
                       value={customFrequencyUnit}
                       onChange={(event) =>
                         setCustomFrequencyUnit(event.target.value)
                       }
-                      className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     >
                       <option value="minutes">Minutes</option>
                       <option value="hours">Hours</option>
                       <option value="days">Days</option>
                     </select>
                   </div>
-                )}
+                ) : null}
                 {renderError("frequency_value")}
+
+                <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-orange-200 bg-white px-[10px] py-[8px]">
+                  <input
+                    type="checkbox"
+                    checked={annoyMode}
+                    onChange={(event) => setAnnoyMode(event.target.checked)}
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-orange-300 text-orange-500 focus:ring-orange-500"
+                  />
+                  <span className="grid gap-1 text-[11px] text-slate-700">
+                    <span className="font-semibold text-slate-900">
+                      Annoy me until done
+                    </span>
+                    <span className="text-[10px] leading-snug text-slate-600">
+                      Escalating texts on a fixed cadence: first every{" "}
+                      <strong className="font-semibold text-slate-800">
+                        5 minutes
+                      </strong>
+                      , then every{" "}
+                      <strong className="font-semibold text-slate-800">
+                        15 minutes
+                      </strong>
+                      , then{" "}
+                      <strong className="font-semibold text-slate-800">
+                        hourly
+                      </strong>
+                      . Tone ramps from a gentle nudge → “You’re ignoring
+                      this.” → “Last warning.”
+                    </span>
+                  </span>
+                </label>
               </div>
 
-              <div className="grid gap-[10px] md:grid-cols-2">
+              <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-600">
+                  Step 3 — Contact
+                </p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
+                    Text Rocket
+                    <input
+                      type="tel"
+                      placeholder="(555) 123-4567"
+                      value={phone}
+                      onChange={(event) => setPhone(event.target.value)}
+                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                    {renderError("phone")}
+                  </label>
+
+                  <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
+                    Email Rocket
+                    <input
+                      type="email"
+                      placeholder="rocket@launch.com"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                    {renderError("email")}
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid gap-[10px] rounded-2xl border border-orange-100 px-[10px] py-[8px] md:grid-cols-2">
                 <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                   Start time
                   <div className="flex flex-wrap items-center gap-2">
@@ -773,6 +834,39 @@ export default function Home() {
             </ul>
           </aside> */}
         </section>
+
+        {showSuccessModal ? (
+          <div className="fixed inset-0 z-[25] flex items-center justify-center bg-slate-950/45 px-4">
+            <div className="w-full max-w-sm rounded-3xl border-2 border-orange-400 bg-white p-5 shadow-xl">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-500">
+                Reminder Rocket
+              </p>
+              <h3 className="mt-2 text-base font-semibold text-slate-900">
+                Reminder launched
+              </h3>
+              <p className="mt-1 text-[12px] text-slate-600">
+                You’re set. Add another mission or sign in to keep reminders
+                across devices.
+              </p>
+              <div className="mt-4 grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSuccessModal(false)}
+                  className="w-full rounded-full bg-orange-500 py-2.5 text-[12px] font-semibold text-white transition hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                >
+                  Add another reminder
+                </button>
+                <Link
+                  href="/sign-in"
+                  onClick={() => setShowSuccessModal(false)}
+                  className="block w-full rounded-full border border-orange-400 py-2.5 text-center text-[12px] font-semibold text-orange-600 transition hover:border-orange-500 hover:text-orange-700"
+                >
+                  Sign in
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {showReminders && user ? (
           <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-950/40 px-4">

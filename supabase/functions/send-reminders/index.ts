@@ -32,6 +32,8 @@ function getIntervalMs(reminder: {
       return 3 * 60 * 60 * 1000;
     case "daily":
       return 24 * 60 * 60 * 1000;
+    case "annoy":
+      return 5 * 60 * 1000;
     case "custom": {
       const value = reminder.frequency_value ?? 0;
       const unit = reminder.frequency_unit ?? "minutes";
@@ -46,6 +48,31 @@ function getIntervalMs(reminder: {
     default:
       return null;
   }
+}
+
+async function getAnnoyMeta(reminderId: string, channel: string) {
+  const { count, error } = await supabase
+    .from("reminder_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("reminder_id", reminderId)
+    .eq("channel", channel)
+    .eq("status", "sent");
+
+  const attemptCount = error ? 0 : count ?? 0;
+  const tone =
+    attemptCount === 0
+      ? "Hey, did you do it?"
+      : attemptCount === 1
+      ? "You're ignoring this."
+      : "Last warning.";
+  const intervalMs =
+    attemptCount === 0
+      ? 5 * 60 * 1000
+      : attemptCount === 1
+      ? 15 * 60 * 1000
+      : 60 * 60 * 1000;
+
+  return { tone, intervalMs, attemptCount };
 }
 
 async function logAttempt(reminderId: string, channel: string, status: string, error?: string) {
@@ -69,6 +96,7 @@ async function sendKlaviyoSmsEvent(params: {
   uploadUrl?: string | null;
   nextRunAt?: string | null;
   nextRunAtLabel?: string | null;
+  tone?: string | null;
 }) {
   const profileAttributes: Record<string, string> = {
     phone_number: params.phoneNumber,
@@ -93,6 +121,7 @@ async function sendKlaviyoSmsEvent(params: {
           upload_url: params.uploadUrl ?? null,
           next_run_at: params.nextRunAt ?? null,
           next_run_at_label: params.nextRunAtLabel ?? null,
+          tone: params.tone ?? null,
         },
         metric: {
           data: {
@@ -167,7 +196,9 @@ function formatDateTime(value?: string | null) {
   if (!value) {
     return "—";
   }
-  return new Date(value).toLocaleString();
+  return new Date(value).toLocaleString("en-US", {
+    timeZone: "America/New_York",
+  });
 }
 
 function getFrequencyLabel(reminder: {
@@ -175,6 +206,9 @@ function getFrequencyLabel(reminder: {
   frequency_value?: number | null;
   frequency_unit?: string | null;
 }) {
+  if (reminder.frequency_type === "annoy") {
+    return "Annoy me until done";
+  }
   if (reminder.frequency_type === "custom") {
     return `Every ${reminder.frequency_value} ${reminder.frequency_unit}`;
   }
@@ -200,7 +234,7 @@ function buildUploadUrl(reminder: { id: string; client_id?: string | null }) {
 
 function buildReminderEmail(params: {
   title: string;
-  subtitle: string;
+  subtitle?: string | null;
   message: string;
   details: Array<{ label: string; value: string }>;
   ctaUrl?: string;
@@ -222,45 +256,51 @@ function buildReminderEmail(params: {
     )
     .join("");
 
+  const subtitleBlock = params.subtitle
+    ? `<p style="margin: 4px 0 12px; color: #475569; font-size: 14px; text-align: center;">${escapeHtml(
+        params.subtitle
+      )}</p>`
+    : "";
+
+  const uploadButton = params.secondaryCtaUrl
+    ? `<a href="${escapeHtml(
+        params.secondaryCtaUrl
+      )}" style="display: inline-block; margin-top: 10px; border: 1px solid #fb923c; color: #f97316; text-decoration: none; font-size: 13px; font-weight: 700; padding: 10px 18px; border-radius: 999px;">${escapeHtml(
+        params.secondaryCtaLabel ?? "Upload receipt"
+      )}</a>`
+    : "";
+
+  const primaryButton = params.ctaUrl
+    ? `<a href="${escapeHtml(
+        params.ctaUrl
+      )}" style="display: inline-block; margin-top: ${
+        uploadButton ? "8px" : "12px"
+      }; background-color: #f97316; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 10px 18px; border-radius: 999px;">${escapeHtml(
+        params.ctaLabel ?? "Complete the mission"
+      )}</a>`
+    : "";
+
   return `
-  <div style="background-color: #ffffff; padding: 24px; font-family: 'Helvetica Neue', Arial, sans-serif; color: #0f172a;">
-    <div style="max-width: 560px; margin: 0 auto; border: 1px solid #fed7aa; border-radius: 24px; padding: 24px;">
-      <div style="display: inline-block; border: 1px solid #fb923c; color: #f97316; border-radius: 999px; padding: 4px 12px; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700;">
+  <div style="background-color: #ffffff; padding: 16px; font-family: 'Helvetica Neue', Arial, sans-serif; color: #0f172a;">
+    <div style="max-width: 560px; margin: 0 auto; border: 1px solid #fed7aa; border-radius: 24px; padding: 20px;">
+      <div style="text-align: center; color: #f97316; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; margin-bottom: 10px;">
         Reminder Rocket
       </div>
-      <h1 style="margin: 16px 0 8px; font-size: 22px;">${escapeHtml(
+      <h1 style="margin: 0 0 8px; font-size: 22px; text-align: center;">${escapeHtml(
         params.title
       )}</h1>
-      <p style="margin: 0 0 16px; color: #475569; font-size: 14px;">${escapeHtml(
-        params.subtitle
-      )}</p>
+      ${subtitleBlock}
       <div style="background-color: #fff7ed; border: 1px solid #fed7aa; border-radius: 18px; padding: 16px;">
         <p style="margin: 0; font-size: 15px; font-weight: 600; color: #0f172a;">
           ${formatMultiline(params.message)}
         </p>
       </div>
-      <table style="width: 100%; margin: 16px 0; border-collapse: collapse;">
+      ${uploadButton}
+      ${primaryButton}
+      <table style="width: 100%; margin: 16px 0 0; border-collapse: collapse;">
         ${detailRows}
       </table>
-      ${
-        params.ctaUrl
-          ? `<a href="${escapeHtml(
-              params.ctaUrl
-            )}" style="display: inline-block; margin-top: 8px; background-color: #f97316; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 10px 18px; border-radius: 999px;">${escapeHtml(
-              params.ctaLabel ?? "Open Reminder Rocket"
-            )}</a>`
-          : ""
-      }
-      ${
-        params.secondaryCtaUrl
-          ? `<a href="${escapeHtml(
-              params.secondaryCtaUrl
-            )}" style="display: inline-block; margin-top: 8px; margin-left: 8px; border: 1px solid #fb923c; color: #f97316; text-decoration: none; font-size: 13px; font-weight: 700; padding: 10px 18px; border-radius: 999px;">${escapeHtml(
-              params.secondaryCtaLabel ?? "Upload receipt"
-            )}</a>`
-          : ""
-      }
-      <p style="margin-top: 20px; font-size: 11px; color: #94a3b8;">
+      <p style="margin-top: 16px; font-size: 11px; color: #94a3b8;">
         Stay on track and finish the mission.
       </p>
     </div>
@@ -308,7 +348,14 @@ serve(async () => {
       continue;
     }
 
-    const intervalMs = getIntervalMs(reminder);
+    const annoyMeta =
+      reminder.frequency_type === "annoy"
+        ? await getAnnoyMeta(reminder.id, reminder.phone ? "sms" : "email")
+        : null;
+    const intervalMs =
+      reminder.frequency_type === "annoy"
+        ? annoyMeta?.intervalMs
+        : getIntervalMs(reminder);
     if (!intervalMs) {
       await logAttempt(reminder.id, "system", "failed", "Invalid frequency.");
       continue;
@@ -316,9 +363,9 @@ serve(async () => {
 
     const uploadUrl =
       reminder.stop_condition === "proof" ? buildUploadUrl(reminder) : null;
-    const messageBody = `${reminder.message}\n\nManage: ${
-      APP_BASE_URL || "your Reminder Rocket dashboard"
-    }${uploadUrl ? `\nUpload receipt: ${uploadUrl}` : ""}`;
+    const smsMessage = annoyMeta?.tone
+      ? `${annoyMeta.tone}\n${reminder.message}`
+      : reminder.message;
 
     if (reminder.phone) {
       try {
@@ -335,7 +382,7 @@ serve(async () => {
             phoneNumber: reminder.phone,
             email: reminder.email,
             externalId: reminder.client_id || reminder.user_id || reminder.id,
-            message: messageBody,
+            message: smsMessage,
             reminderId: reminder.id,
             frequencyLabel: getFrequencyLabel(reminder),
             stopCondition:
@@ -346,6 +393,7 @@ serve(async () => {
             uploadUrl,
             nextRunAt: reminder.next_run_at,
             nextRunAtLabel: formatDateTime(reminder.next_run_at),
+            tone: annoyMeta?.tone ?? null,
           });
           await logAttempt(reminder.id, "sms", "sent");
           delivered = true;
@@ -368,7 +416,7 @@ serve(async () => {
           hasConfiguredChannel = true;
           const html = buildReminderEmail({
             title: "Reminder alert",
-            subtitle: "Your reminder is active.",
+            subtitle: null,
             message: reminder.message,
             details: [
               { label: "Recipient", value: reminder.recipient_name || "You" },
@@ -383,7 +431,7 @@ serve(async () => {
               },
             ],
             ctaUrl: APP_BASE_URL || undefined,
-            ctaLabel: "Open Reminder Rocket",
+            ctaLabel: "Complete the mission",
             secondaryCtaUrl:
               reminder.stop_condition === "proof"
                 ? buildUploadUrl(reminder)

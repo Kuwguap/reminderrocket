@@ -17,6 +17,8 @@ function getIntervalMs(reminder) {
       return 3 * 60 * 60 * 1000;
     case "daily":
       return 24 * 60 * 60 * 1000;
+    case "annoy":
+      return 5 * 60 * 1000;
     case "custom": {
       const value = reminder.frequency_value ?? 0;
       const unit = reminder.frequency_unit ?? "minutes";
@@ -37,10 +39,15 @@ function formatDateTime(value) {
   if (!value) {
     return "—";
   }
-  return new Date(value).toLocaleString();
+  return new Date(value).toLocaleString("en-US", {
+    timeZone: "America/New_York",
+  });
 }
 
 function getFrequencyLabel(reminder) {
+  if (reminder.frequency_type === "annoy") {
+    return "Annoy me until done";
+  }
   if (reminder.frequency_type === "custom") {
     return `Every ${reminder.frequency_value} ${reminder.frequency_unit}`;
   }
@@ -62,6 +69,31 @@ function buildUploadUrl(reminder, appBaseUrl) {
     url.searchParams.set("client_id", reminder.client_id);
   }
   return url.toString();
+}
+
+async function getAnnoyMeta(reminderId, channel, supabase) {
+  const { count, error } = await supabase
+    .from("reminder_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("reminder_id", reminderId)
+    .eq("channel", channel)
+    .eq("status", "sent");
+
+  const attemptCount = error ? 0 : count ?? 0;
+  const tone =
+    attemptCount === 0
+      ? "Hey, did you do it?"
+      : attemptCount === 1
+      ? "You're ignoring this."
+      : "Last warning.";
+  const intervalMs =
+    attemptCount === 0
+      ? 5 * 60 * 1000
+      : attemptCount === 1
+      ? 15 * 60 * 1000
+      : 60 * 60 * 1000;
+
+  return { tone, intervalMs, attemptCount };
 }
 
 export async function GET(request) {
@@ -113,7 +145,18 @@ export async function GET(request) {
       continue;
     }
 
-    const intervalMs = getIntervalMs(reminder);
+    const annoyMeta =
+      reminder.frequency_type === "annoy"
+        ? await getAnnoyMeta(
+            reminder.id,
+            reminder.phone ? "sms" : "email",
+            supabase
+          )
+        : null;
+    const intervalMs =
+      reminder.frequency_type === "annoy"
+        ? annoyMeta?.intervalMs
+        : getIntervalMs(reminder);
     if (!intervalMs) {
       await supabase.from("reminder_attempts").insert({
         reminder_id: reminder.id,
@@ -125,9 +168,9 @@ export async function GET(request) {
     }
 
     const uploadUrl = buildUploadUrl(reminder, appBaseUrl);
-    const messageBody = `${reminder.message}\n\nManage: ${
-      appBaseUrl || "your Reminder Rocket dashboard"
-    }${uploadUrl ? `\nUpload receipt: ${uploadUrl}` : ""}`;
+    const smsMessage = annoyMeta?.tone
+      ? `${annoyMeta.tone}\n${reminder.message}`
+      : reminder.message;
 
     if (reminder.phone) {
       try {
@@ -145,7 +188,7 @@ export async function GET(request) {
             phoneNumber: reminder.phone,
             email: reminder.email,
             externalId: reminder.client_id || reminder.user_id || reminder.id,
-            message: messageBody,
+            message: smsMessage,
             reminderId: reminder.id,
             frequencyLabel: getFrequencyLabel(reminder),
             stopCondition:
@@ -156,6 +199,7 @@ export async function GET(request) {
             uploadUrl,
             nextRunAt: reminder.next_run_at,
             nextRunAtLabel: formatDateTime(reminder.next_run_at),
+            tone: annoyMeta?.tone ?? null,
           });
           await supabase.from("reminder_attempts").insert({
             reminder_id: reminder.id,
@@ -188,7 +232,7 @@ export async function GET(request) {
           const resend = new Resend(process.env.RESEND_API_KEY);
           const html = buildReminderEmail({
             title: "Reminder alert",
-            subtitle: "Your reminder is active.",
+            subtitle: null,
             message: reminder.message,
             details: [
               { label: "Recipient", value: reminder.recipient_name || "You" },
@@ -203,7 +247,7 @@ export async function GET(request) {
               },
             ],
             ctaUrl: appBaseUrl || undefined,
-            ctaLabel: "Open Reminder Rocket",
+            ctaLabel: "Complete the mission",
             secondaryCtaUrl:
               reminder.stop_condition === "proof" ? uploadUrl : undefined,
             secondaryCtaLabel: "Upload receipt",
