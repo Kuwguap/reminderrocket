@@ -255,7 +255,10 @@ export default function Home() {
       await loadReminders();
       setShowSuccessModal(true);
     } catch (error) {
-      setSubmitError("Something went wrong while creating the reminder.");
+      const message =
+        error instanceof Error ? error.message : String(error ?? "Unknown error");
+      console.error("Create reminder failed:", error);
+      setSubmitError(`Something went wrong while creating the reminder. ${message}`);
     } finally {
       setIsSubmitting(false);
     }
