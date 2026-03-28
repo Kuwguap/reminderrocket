@@ -2,9 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 
-export default function UploadProofPage({ params }) {
+export default function UploadProofPage() {
+  const routeParams = useParams();
+  const reminderId =
+    typeof routeParams?.id === "string"
+      ? routeParams.id
+      : Array.isArray(routeParams?.id)
+        ? routeParams.id[0]
+        : "";
   const searchParams = useSearchParams();
   const clientId = searchParams.get("client_id");
   const [file, setFile] = useState(null);
@@ -19,6 +26,12 @@ export default function UploadProofPage({ params }) {
       return;
     }
 
+    if (!reminderId) {
+      setError("Missing reminder in this link. Open the upload page from your reminder email.");
+      setStatus("error");
+      return;
+    }
+
     setStatus("uploading");
     setError("");
 
@@ -26,7 +39,7 @@ export default function UploadProofPage({ params }) {
     formData.append("file", file);
 
     const url = new URL(
-      `/api/reminders/${params.id}/proof`,
+      `/api/reminders/${reminderId}/proof`,
       window.location.origin
     );
     if (clientId) {

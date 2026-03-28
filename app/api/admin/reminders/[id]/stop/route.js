@@ -61,7 +61,8 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  let reminderId = params?.id;
+  const resolved = await Promise.resolve(params);
+  let reminderId = resolved?.id;
   if (!reminderId) {
     const pathname = new URL(request.url).pathname;
     const match = pathname.match(/\/api\/admin\/reminders\/([^/]+)\/stop$/);

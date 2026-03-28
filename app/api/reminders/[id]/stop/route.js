@@ -2,9 +2,20 @@ import { NextResponse } from "next/server";
 import { createSupabaseAuthClient } from "../../../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../../../lib/supabaseServer";
 
+async function resolveReminderId(request, params) {
+  const resolved = await Promise.resolve(params);
+  let id = resolved?.id;
+  if (!id) {
+    const pathname = new URL(request.url).pathname;
+    const match = pathname.match(/\/api\/reminders\/([^/]+)\/stop$/);
+    id = match?.[1] ?? null;
+  }
+  return id;
+}
+
 export async function POST(request, { params }) {
   try {
-    const { id } = params;
+    const id = await resolveReminderId(request, params);
 
     if (!id) {
       return NextResponse.json(
