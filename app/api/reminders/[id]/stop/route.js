@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { applyReminderOwnerFilter } from "../../../../../lib/reminderAccess";
 import { createSupabaseAuthClient } from "../../../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../../../lib/supabaseServer";
 
@@ -63,11 +64,7 @@ export async function POST(request, { params }) {
     }
 
     let reminderQuery = supabase.from("reminders").select("*").eq("id", id);
-    if (user) {
-      reminderQuery = reminderQuery.eq("user_id", user.id);
-    } else {
-      reminderQuery = reminderQuery.eq("client_id", clientId);
-    }
+    reminderQuery = applyReminderOwnerFilter(reminderQuery, user, clientId);
 
     const { data: reminder, error: fetchError } = await reminderQuery.single();
 

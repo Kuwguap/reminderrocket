@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { formatZodErrors, reminderSchema } from "../lib/validation";
@@ -76,6 +76,7 @@ export default function Home() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [clientId, setClientId] = useState("");
+  const [authReady, setAuthReady] = useState(false);
 
   const supabase = useMemo(() => {
     try {
@@ -92,7 +93,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
@@ -115,19 +116,23 @@ export default function Home() {
 
   useEffect(() => {
     if (!supabase) {
+      setAuthReady(true);
       return;
     }
     let isActive = true;
 
-    const syncSessionUser = async () => {
+    const syncSessionUser = async (isInitial = false) => {
       const { data } = await supabase.auth.getSession();
       if (!isActive) {
         return;
       }
       setUser(data.session?.user ?? null);
+      if (isInitial) {
+        setAuthReady(true);
+      }
     };
 
-    syncSessionUser();
+    syncSessionUser(true);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
@@ -136,7 +141,9 @@ export default function Home() {
         }
       }
     );
-    const sessionPoll = setInterval(syncSessionUser, 60 * 1000);
+    const sessionPoll = setInterval(() => {
+      syncSessionUser(false);
+    }, 60 * 1000);
     return () => {
       isActive = false;
       clearInterval(sessionPoll);
@@ -145,6 +152,9 @@ export default function Home() {
   }, [supabase]);
 
   useEffect(() => {
+    if (!authReady) {
+      return;
+    }
     if (user) {
       loadReminders();
       return;
@@ -156,17 +166,19 @@ export default function Home() {
     setReminders([]);
     setListError("");
     setIsLoadingReminders(false);
-  }, [user, clientId]);
+  }, [user, clientId, authReady]);
 
   async function loadReminders() {
     setIsLoadingReminders(true);
     setListError("");
     try {
       const params = new URLSearchParams({ status: "active" });
-      if (!user && clientId) {
+      if (clientId) {
         params.set("client_id", clientId);
       }
-      const response = await fetch(`/api/reminders?${params.toString()}`);
+      const response = await fetch(`/api/reminders?${params.toString()}`, {
+        credentials: "include",
+      });
       const payload = await response.json();
       if (!response.ok) {
         throw new Error(payload?.error || "Unable to load reminders.");
@@ -277,9 +289,12 @@ export default function Home() {
   async function handleStopReminder(reminderId) {
     setActionError("");
     try {
-      const query = !user && clientId ? `?client_id=${clientId}` : "";
+      const query = clientId
+        ? `?client_id=${encodeURIComponent(clientId)}`
+        : "";
       const response = await fetch(`/api/reminders/${reminderId}/stop${query}`, {
         method: "POST",
+        credentials: "include",
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -301,9 +316,12 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const query = !user && clientId ? `?client_id=${clientId}` : "";
+      const query = clientId
+        ? `?client_id=${encodeURIComponent(clientId)}`
+        : "";
       const response = await fetch(`/api/reminders/${reminderId}/proof${query}`, {
         method: "POST",
+        credentials: "include",
         body: formData,
       });
       const payload = await response.json();
@@ -904,16 +922,23 @@ export default function Home() {
                             Upload proof to complete this reminder.
                           </p>
                           <input
+                            id={`proof-file-${reminder.id}`}
                             type="file"
                             accept="image/*"
+                            className="sr-only"
                             onChange={(event) =>
                               handleProofUpload(
                                 reminder.id,
                                 event.target.files?.[0]
                               )
                             }
-                            className="text-xs text-slate-600"
                           />
+                          <label
+                            htmlFor={`proof-file-${reminder.id}`}
+                            className="inline-flex w-full cursor-pointer items-center justify-center rounded-2xl border-2 border-orange-400 bg-orange-50 px-4 py-3 text-center text-sm font-bold text-orange-700 shadow-sm transition hover:border-orange-500 hover:bg-orange-100"
+                          >
+                            Choose photo
+                          </label>
                           {uploadingId === reminder.id ? (
                             <p className="text-xs text-slate-500">
                               Uploading...

@@ -4,6 +4,7 @@ import { buildReminderEmail } from "../../../lib/emailTemplate";
 import { subscribeSmsProfile } from "../../../lib/klaviyo";
 import { createSupabaseAuthClient } from "../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
+import { applyReminderOwnerFilter } from "../../../lib/reminderAccess";
 import { formatZodErrors, reminderSchema } from "../../../lib/validation";
 
 const FREQUENCY_INTERVALS_MS = {
@@ -154,10 +155,8 @@ export async function GET(request) {
       query = query.eq("status", status);
     }
 
-    if (user) {
-      query = query.eq("user_id", user.id);
-    } else if (clientId) {
-      query = query.eq("client_id", clientId);
+    if (user || clientId) {
+      query = applyReminderOwnerFilter(query, user, clientId);
     } else {
       return NextResponse.json({ reminders: [] });
     }

@@ -48,6 +48,7 @@ export default function UploadProofPage() {
 
     const response = await fetch(url.toString(), {
       method: "POST",
+      credentials: "include",
       body: formData,
     });
 
@@ -97,15 +98,22 @@ export default function UploadProofPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700">
+                <span className="block text-sm font-medium text-slate-700">
                   Receipt photo
-                </label>
+                </span>
                 <input
+                  id="upload-proof-file"
                   type="file"
                   accept="image/*"
-                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                  className="sr-only"
                   onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                 />
+                <label
+                  htmlFor="upload-proof-file"
+                  className="mt-3 flex w-full cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-orange-400 bg-gradient-to-b from-orange-50 to-white px-4 py-5 text-center text-sm font-bold text-orange-700 shadow-md transition hover:border-orange-500 hover:from-orange-100 hover:to-orange-50"
+                >
+                  {file ? file.name : "Choose file — tap to pick a photo"}
+                </label>
               </div>
 
               {error ? (
