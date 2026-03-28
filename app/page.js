@@ -149,6 +149,10 @@ export default function Home() {
       loadReminders();
       return;
     }
+    if (clientId) {
+      loadReminders();
+      return;
+    }
     setReminders([]);
     setListError("");
     setIsLoadingReminders(false);
@@ -737,7 +741,7 @@ export default function Home() {
               </button>
             </form>
 
-            {user ? (
+            {user || clientId ? (
               <div className="mt-[10px] rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[11px]">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-semibold text-slate-900">
@@ -798,10 +802,9 @@ export default function Home() {
                 Reminder launched
               </h3>
               <p className="mt-1 text-[12px] text-slate-600">
-                You’re set. Add another mission or sign in to keep reminders
-                across devices.
+                You’re set. Add another mission whenever you’re ready.
               </p>
-              <div className="mt-4 grid gap-2">
+              <div className="mt-4">
                 <button
                   type="button"
                   onClick={() => setShowSuccessModal(false)}
@@ -809,19 +812,12 @@ export default function Home() {
                 >
                   Add another reminder
                 </button>
-                <Link
-                  href="/sign-in"
-                  onClick={() => setShowSuccessModal(false)}
-                  className="block w-full rounded-full border border-orange-400 py-2.5 text-center text-[12px] font-semibold text-orange-600 transition hover:border-orange-500 hover:text-orange-700"
-                >
-                  Sign in
-                </Link>
               </div>
             </div>
           </div>
         ) : null}
 
-        {showReminders && user ? (
+        {showReminders && (user || clientId) ? (
           <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-950/40 px-4">
             <div className="w-full max-w-xl rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
               <div className="flex items-center justify-between">

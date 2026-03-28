@@ -1,7 +1,58 @@
 import { NextResponse } from "next/server";
 import { Buffer } from "node:buffer";
+import { Resend } from "resend";
+import { buildReminderEmail } from "../../../../../lib/emailTemplate";
 import { createSupabaseAuthClient } from "../../../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../../../lib/supabaseServer";
+
+function formatNy(value) {
+  if (!value) {
+    return "—";
+  }
+  return new Date(value).toLocaleString("en-US", {
+    timeZone: "America/New_York",
+  });
+}
+
+async function sendMissionCompleteEmail(reminder, proofSignedUrl) {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL;
+  if (!resendApiKey || !fromEmail || !reminder.email) {
+    return { status: "skipped" };
+  }
+  try {
+    const resend = new Resend(resendApiKey);
+    const html = buildReminderEmail({
+      title: "Mission complete",
+      subtitle:
+        "Your receipt proof is uploaded. Use the link below to view what you sent — and make sure you truly completed the mission.",
+      message: reminder.message,
+      details: [
+        { label: "Completed at (ET)", value: formatNy(reminder.completed_at) },
+        {
+          label: "Proof",
+          value: proofSignedUrl
+            ? "“View your proof” below (link expires in 7 days)."
+            : "Stored securely in your reminder.",
+        },
+      ],
+      ctaUrl: process.env.APP_BASE_URL || undefined,
+      ctaLabel: "Open Reminder Rocket",
+      secondaryCtaUrl: proofSignedUrl || undefined,
+      secondaryCtaLabel: "View your proof",
+    });
+    await resend.emails.send({
+      from: fromEmail,
+      to: reminder.email,
+      subject: "Reminder Rocket — mission complete",
+      html,
+    });
+    return { status: "sent" };
+  } catch (error) {
+    console.error("Mission complete email failed:", error);
+    return { status: "failed", error: String(error) };
+  }
+}
 
 async function resolveReminderId(request, params) {
   const resolved = await Promise.resolve(params);
@@ -134,7 +185,26 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ reminder: data, proofPath: filePath });
+    let proofSignedUrl = null;
+    const { data: signed, error: signError } = await supabase.storage
+      .from("reminder-proofs")
+      .createSignedUrl(filePath, 60 * 60 * 24 * 7);
+    if (!signError && signed?.signedUrl) {
+      proofSignedUrl = signed.signedUrl;
+    }
+
+    let completionEmail = null;
+    try {
+      completionEmail = await sendMissionCompleteEmail(data, proofSignedUrl);
+    } catch (emailError) {
+      completionEmail = { status: "failed", error: String(emailError) };
+    }
+
+    return NextResponse.json({
+      reminder: data,
+      proofPath: filePath,
+      completionEmail,
+    });
   } catch (error) {
     console.error("Reminders PROOF failure:", error);
     return NextResponse.json(

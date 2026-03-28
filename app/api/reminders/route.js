@@ -323,7 +323,7 @@ export async function POST(request) {
       stop_condition: data.stop_condition,
       stop_at: stopTime ? stopTime.toISOString() : null,
       user_id: user ? user.id : null,
-      client_id: user ? null : clientId,
+      client_id: clientId || null,
       status: "active",
     };
 
