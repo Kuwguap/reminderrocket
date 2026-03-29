@@ -940,17 +940,26 @@ export default function Home() {
                             Recipient: {reminder.recipient_name || "Recipient"}
                           </p>
                           <p className="text-xs text-slate-500">
+                            Start: {formatDateTime(reminder.start_time)}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Stop:{" "}
+                            {reminder.stop_condition === "proof"
+                              ? reminder.stop_at
+                                ? formatDateTime(reminder.stop_at)
+                                : "Proof upload (no fixed end time)"
+                              : reminder.stop_at
+                                ? formatDateTime(reminder.stop_at)
+                                : "—"}
+                          </p>
+                          <p className="text-xs text-slate-500">
                             Next run: {formatDateTime(reminder.next_run_at)}
                           </p>
                           {reminder.stop_condition === "proof" ? (
                             <p className="text-xs text-slate-500">
-                              Proof required
+                              Proof required to complete
                             </p>
-                          ) : (
-                            <p className="text-xs text-slate-500">
-                              Stops: {formatDateTime(reminder.stop_at)}
-                            </p>
-                          )}
+                          ) : null}
                         </div>
                         {reminder.stop_condition === "proof" &&
                         !reminder.proof_url ? null : (
