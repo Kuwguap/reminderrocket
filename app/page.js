@@ -862,7 +862,7 @@ export default function Home() {
                   ? "You’re set. Add another mission whenever you’re ready."
                   : "You’re set. Add another mission, or sign in to keep reminders on every device."}
               </p>
-              <div className={`mt-4 ${user ? "" : "grid gap-2"}`}>
+              <div className="mt-4 grid gap-2">
                 <button
                   type="button"
                   onClick={() => setShowSuccessModal(false)}
@@ -870,7 +870,19 @@ export default function Home() {
                 >
                   Add another reminder
                 </button>
-                {!user ? (
+                {user ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSuccessModal(false);
+                      setShowReminders(true);
+                      loadReminders();
+                    }}
+                    className="w-full rounded-full border border-orange-400 py-2.5 text-[12px] font-semibold text-orange-600 transition hover:border-orange-500 hover:text-orange-700"
+                  >
+                    View reminders
+                  </button>
+                ) : (
                   <Link
                     href="/sign-in"
                     onClick={() => setShowSuccessModal(false)}
@@ -878,7 +890,7 @@ export default function Home() {
                   >
                     Sign in
                   </Link>
-                ) : null}
+                )}
               </div>
             </div>
           </div>
