@@ -11,6 +11,12 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "../lib/supabaseBrowser";
+import {
+  formatCountdown,
+  formatDateTimeNy,
+  msUntil,
+  parseDatetimeLocalInAppZone,
+} from "../lib/nyTime";
 import { formatZodErrors, reminderSchema } from "../lib/validation";
 
 const modalDismissXClassName =
@@ -90,6 +96,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [clientId, setClientId] = useState("");
   const [authReady, setAuthReady] = useState(false);
+  const [reminderTick, setReminderTick] = useState(0);
 
   const supabase = useMemo(() => {
     try {
@@ -221,6 +228,14 @@ export default function Home() {
   }, [user, clientId, authReady, loadReminders]);
 
   useEffect(() => {
+    if (!showReminders) {
+      return;
+    }
+    const id = setInterval(() => setReminderTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [showReminders]);
+
+  useEffect(() => {
     if (!user?.email) {
       return;
     }
@@ -242,10 +257,12 @@ export default function Home() {
       startTiming === "now"
         ? new Date()
         : scheduledAt
-        ? new Date(scheduledAt)
+        ? parseDatetimeLocalInAppZone(scheduledAt)
         : null;
     const stopTime =
-      stopCondition === "time" && stopAt ? new Date(stopAt) : null;
+      stopCondition === "time" && stopAt
+        ? parseDatetimeLocalInAppZone(stopAt)
+        : null;
 
     const selectedFrequency = annoyMode ? "annoy" : frequency;
     const payload = {
@@ -458,15 +475,6 @@ export default function Home() {
     formErrors[field] ? (
       <span className="text-xs text-rose-500">{formErrors[field]}</span>
     ) : null;
-
-  const formatDateTime = (value) => {
-    if (!value) {
-      return "—";
-    }
-    return new Date(value).toLocaleString("en-US", {
-      timeZone: "America/New_York",
-    });
-  };
 
   const formatFrequency = (reminder) => {
     if (reminder.frequency_type === "annoy") {
@@ -684,7 +692,7 @@ export default function Home() {
 
                 <div className="grid gap-[10px] rounded-2xl border border-orange-100 bg-white px-[10px] py-[10px] md:grid-cols-2">
                   <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                    Start time
+                    Start time (Eastern)
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
@@ -707,7 +715,7 @@ export default function Home() {
                     </div>
                     {startTiming === "schedule" ? (
                       <label className="grid gap-[3px] text-[11px] font-medium text-slate-600">
-                        Scheduled start
+                        Scheduled start (ET)
                         <input
                           type="datetime-local"
                           value={scheduledAt}
@@ -735,7 +743,7 @@ export default function Home() {
 
                     {stopCondition === "time" ? (
                       <label className="grid gap-[3px] text-[11px] font-medium text-slate-600">
-                        Stop time
+                        Stop time (Eastern)
                         <input
                           type="datetime-local"
                           value={stopAt}
@@ -940,6 +948,10 @@ export default function Home() {
                 <p className="mt-2 text-xs text-rose-500">{actionError}</p>
               ) : null}
 
+              <p className="mt-1 text-[11px] text-slate-500">
+                All times are US Eastern (New York).
+              </p>
+
               {isLoadingReminders ? (
                 <p className="mt-3 text-sm text-slate-500">
                   Loading reminders...
@@ -949,7 +961,7 @@ export default function Home() {
                   No active reminders yet.
                 </p>
               ) : (
-                <div className="mt-3 grid gap-3">
+                <div className="mt-3 grid gap-3" data-sync={reminderTick}>
                   {visibleReminders.map((reminder) => (
                     <div
                       key={reminder.id}
@@ -964,21 +976,41 @@ export default function Home() {
                             Recipient: {reminder.recipient_name || "Recipient"}
                           </p>
                           <p className="text-xs text-slate-500">
-                            Start: {formatDateTime(reminder.start_time)}
+                            Start time (ET):{" "}
+                            {formatDateTimeNy(reminder.start_time)}
                           </p>
                           <p className="text-xs text-slate-500">
-                            Stop:{" "}
+                            End time (ET):{" "}
                             {reminder.stop_condition === "proof"
                               ? reminder.stop_at
-                                ? formatDateTime(reminder.stop_at)
-                                : "Proof upload (no fixed end time)"
+                                ? formatDateTimeNy(reminder.stop_at)
+                                : "Open-ended until proof"
                               : reminder.stop_at
-                                ? formatDateTime(reminder.stop_at)
+                                ? formatDateTimeNy(reminder.stop_at)
                                 : "—"}
                           </p>
                           <p className="text-xs text-slate-500">
-                            Next run: {formatDateTime(reminder.next_run_at)}
+                            Next run (ET):{" "}
+                            {formatDateTimeNy(reminder.next_run_at)}
                           </p>
+                          {reminder.stop_condition !== "proof" ? (
+                            <div className="rounded-xl border border-orange-100 bg-orange-50/60 px-2 py-1.5 text-[11px] font-semibold text-orange-800">
+                              <p>
+                                Next reminder in:{" "}
+                                {formatCountdown(
+                                  msUntil(reminder.next_run_at)
+                                ) ?? "—"}
+                              </p>
+                              {reminder.stop_at ? (
+                                <p className="mt-0.5 font-normal text-orange-900/90">
+                                  Reminder series ends in:{" "}
+                                  {formatCountdown(
+                                    msUntil(reminder.stop_at)
+                                  ) ?? "—"}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
                           {reminder.stop_condition === "proof" ? (
                             <p className="text-xs text-slate-500">
                               Proof required to complete

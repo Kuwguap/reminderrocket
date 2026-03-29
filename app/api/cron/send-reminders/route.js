@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../../lib/emailTemplate";
 import { sendSmsEvent } from "../../../../lib/klaviyo";
+import { formatDateTimeNy } from "../../../../lib/nyTime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,15 +34,6 @@ function getIntervalMs(reminder) {
     default:
       return null;
   }
-}
-
-function formatDateTime(value) {
-  if (!value) {
-    return "—";
-  }
-  return new Date(value).toLocaleString("en-US", {
-    timeZone: "America/New_York",
-  });
 }
 
 function getFrequencyLabel(reminder) {
@@ -194,11 +186,11 @@ export async function GET(request) {
             stopCondition:
               reminder.stop_condition === "proof"
                 ? "Picture proof required"
-                : `Stop at ${formatDateTime(reminder.stop_at)}`,
+                : `Stop at ${formatDateTimeNy(reminder.stop_at)}`,
             manageUrl: appBaseUrl || null,
             uploadUrl,
             nextRunAt: reminder.next_run_at,
-            nextRunAtLabel: formatDateTime(reminder.next_run_at),
+            nextRunAtLabel: formatDateTimeNy(reminder.next_run_at),
             tone: annoyMeta?.tone ?? null,
           });
           await supabase.from("reminder_attempts").insert({
@@ -237,13 +229,13 @@ export async function GET(request) {
             details: [
               { label: "Recipient", value: reminder.recipient_name || "You" },
               { label: "Frequency", value: getFrequencyLabel(reminder) },
-              { label: "Next run", value: formatDateTime(reminder.next_run_at) },
+              { label: "Next run", value: formatDateTimeNy(reminder.next_run_at) },
               {
                 label: "Stop condition",
                 value:
                   reminder.stop_condition === "proof"
                     ? "Picture proof required"
-                    : `Stop at ${formatDateTime(reminder.stop_at)}`,
+                    : `Stop at ${formatDateTimeNy(reminder.stop_at)}`,
               },
             ],
             ctaUrl: appBaseUrl || undefined,

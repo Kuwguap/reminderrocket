@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatDateTimeNy } from "../../lib/nyTime";
 
 export default function SettingsPage() {
   const [adminPassword, setAdminPassword] = useState("");
@@ -127,13 +128,6 @@ export default function SettingsPage() {
         ? "border-orange-400 bg-orange-50 text-orange-600"
         : "border-slate-200 text-slate-500"
     }`;
-
-  const formatDateTime = (value) => {
-    if (!value) {
-      return "—";
-    }
-    return new Date(value).toLocaleString();
-  };
 
   const formatFrequency = (reminder) => {
     if (reminder.frequency_type === "custom") {
@@ -360,7 +354,7 @@ export default function SettingsPage() {
                         Frequency: {formatFrequency(reminder)}
                       </p>
                       <p className="text-xs text-slate-500">
-                        Next run: {formatDateTime(reminder.next_run_at)}
+                        Next run (ET): {formatDateTimeNy(reminder.next_run_at)}
                       </p>
                     </div>
                     <button

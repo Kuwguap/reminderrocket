@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../../lib/emailTemplate";
 import { sendSmsEvent, subscribeSmsProfile } from "../../../../lib/klaviyo";
+import { formatDateTimeNy } from "../../../../lib/nyTime";
 
 function hasValue(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -93,7 +94,7 @@ export async function POST(request) {
           manageUrl: process.env.APP_BASE_URL || null,
           uploadUrl: null,
           nextRunAt: new Date().toISOString(),
-          nextRunAtLabel: new Date().toLocaleString(),
+          nextRunAtLabel: formatDateTimeNy(new Date().toISOString()),
           tone: null,
         });
 

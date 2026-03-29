@@ -192,6 +192,7 @@ function formatMultiline(value: string) {
   return escapeHtml(value).replace(/\n/g, "<br />");
 }
 
+/** Display timestamps in US Eastern; keep in sync with `lib/nyTime.js` `formatDateTimeNy`. */
 function formatDateTime(value?: string | null) {
   if (!value) {
     return "—";

@@ -6,15 +6,7 @@ import { applyReminderOwnerFilter } from "../../../../../lib/reminderAccess";
 import { getServerAuthUser } from "../../../../../lib/serverAuthUser";
 import { createSupabaseAuthClient } from "../../../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../../../lib/supabaseServer";
-
-function formatNy(value) {
-  if (!value) {
-    return "—";
-  }
-  return new Date(value).toLocaleString("en-US", {
-    timeZone: "America/New_York",
-  });
-}
+import { formatDateTimeNy } from "../../../../../lib/nyTime";
 
 async function sendMissionCompleteEmail(reminder, proofSignedUrl) {
   const resendApiKey = process.env.RESEND_API_KEY;
@@ -30,7 +22,10 @@ async function sendMissionCompleteEmail(reminder, proofSignedUrl) {
         "Your receipt proof is uploaded. Use the link below to view what you sent — and make sure you truly completed the mission.",
       message: reminder.message,
       details: [
-        { label: "Completed at (ET)", value: formatNy(reminder.completed_at) },
+        {
+          label: "Completed at (ET)",
+          value: formatDateTimeNy(reminder.completed_at),
+        },
         {
           label: "Proof",
           value: proofSignedUrl

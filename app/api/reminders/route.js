@@ -6,6 +6,7 @@ import { createSupabaseAuthClient } from "../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
 import { applyReminderOwnerFilter } from "../../../lib/reminderAccess";
 import { getServerAuthUser } from "../../../lib/serverAuthUser";
+import { formatDateTimeNy } from "../../../lib/nyTime";
 import { formatZodErrors, reminderSchema } from "../../../lib/validation";
 
 const FREQUENCY_INTERVALS_MS = {
@@ -50,15 +51,6 @@ function getFrequencyLabel(reminder) {
   return labels[reminder.frequency_type] ?? reminder.frequency_type;
 }
 
-function formatDateTime(value) {
-  if (!value) {
-    return "—";
-  }
-  return new Date(value).toLocaleString("en-US", {
-    timeZone: "America/New_York",
-  });
-}
-
 function buildUploadUrl(reminder) {
   if (!process.env.APP_BASE_URL) {
     return null;
@@ -87,13 +79,13 @@ async function sendConfirmationEmail(reminder) {
     details: [
       { label: "Recipient", value: reminder.recipient_name || "You" },
       { label: "Frequency", value: getFrequencyLabel(reminder) },
-      { label: "First reminder", value: formatDateTime(reminder.next_run_at) },
+      { label: "First reminder", value: formatDateTimeNy(reminder.next_run_at) },
       {
         label: "Stop condition",
         value:
           reminder.stop_condition === "proof"
             ? "Picture proof required"
-            : `Stop at ${formatDateTime(reminder.stop_at)}`,
+            : `Stop at ${formatDateTimeNy(reminder.stop_at)}`,
       },
     ],
     ctaUrl: process.env.APP_BASE_URL || undefined,
