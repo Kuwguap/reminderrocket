@@ -13,6 +13,9 @@ import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { formatZodErrors, reminderSchema } from "../lib/validation";
 
+const modalDismissXClassName =
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg leading-none text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500";
+
 const quotes = [
   "Mission focus beats motivation every time.",
   "Small launches lead to big orbits.",
@@ -850,7 +853,15 @@ export default function Home() {
 
         {showSuccessModal ? (
           <div className="fixed inset-0 z-[25] flex items-center justify-center bg-slate-950/45 px-4">
-            <div className="w-full max-w-sm rounded-3xl border-2 border-orange-400 bg-white p-5 shadow-xl">
+            <div className="relative w-full max-w-sm rounded-3xl border-2 border-orange-400 bg-white p-5 shadow-xl">
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setShowSuccessModal(false)}
+                className={`absolute right-3 top-3 ${modalDismissXClassName}`}
+              >
+                ×
+              </button>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-500">
                 Reminder Rocket
               </p>
@@ -903,7 +914,7 @@ export default function Home() {
                 <h3 className="text-sm font-semibold text-slate-900">
                   Active reminders
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={loadReminders}
@@ -913,10 +924,11 @@ export default function Home() {
                   </button>
                   <button
                     type="button"
+                    aria-label="Close"
                     onClick={() => setShowReminders(false)}
-                    className="rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white transition hover:bg-orange-600"
+                    className={modalDismissXClassName}
                   >
-                    Close
+                    ×
                   </button>
                 </div>
               </div>
@@ -1039,10 +1051,11 @@ export default function Home() {
                 </h3>
                 <button
                   type="button"
+                  aria-label="Close"
                   onClick={() => setShowAuth(false)}
-                  className="rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white transition hover:bg-orange-600"
+                  className={modalDismissXClassName}
                 >
-                  Close
+                  ×
                 </button>
               </div>
 
