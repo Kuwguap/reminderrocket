@@ -483,7 +483,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white">
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 px-5 py-4">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-4">
         {/* <header className="relative flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
             <p className="inline-flex items-center gap-2 rounded-full border border-orange-400 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
@@ -555,8 +555,8 @@ export default function Home() {
           </div>
         </header> */}
 
-        <section className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1.2fr,0.8fr]">
-          <div className="rounded-3xl border border-orange-200 bg-white p-[18px] shadow-sm">
+        <section className="grid w-full items-start gap-4 lg:grid-cols-[1.2fr,0.8fr]">
+          <div className="w-full self-start rounded-3xl border border-orange-200 bg-white p-[18px] shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-[11px] font-semibold text-slate-900">
                 Create a reminder
@@ -794,7 +794,11 @@ export default function Home() {
             </form>
 
             {user || clientId ? (
-              <div className="mt-[10px] rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[11px]">
+              <div
+                className={`mt-[10px] rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[11px] ${
+                  !isLoadingReminders && reminders.length > 0 ? "mb-[5px]" : ""
+                }`}
+              >
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-semibold text-slate-900">
                     Active reminders:{" "}
