@@ -854,9 +854,11 @@ export default function Home() {
                 Reminder launched
               </h3>
               <p className="mt-1 text-[12px] text-slate-600">
-                You’re set. Add another mission whenever you’re ready.
+                {user
+                  ? "You’re set. Add another mission whenever you’re ready."
+                  : "You’re set. Add another mission, or sign in to keep reminders on every device."}
               </p>
-              <div className="mt-4">
+              <div className={`mt-4 ${user ? "" : "grid gap-2"}`}>
                 <button
                   type="button"
                   onClick={() => setShowSuccessModal(false)}
@@ -864,6 +866,15 @@ export default function Home() {
                 >
                   Add another reminder
                 </button>
+                {!user ? (
+                  <Link
+                    href="/sign-in"
+                    onClick={() => setShowSuccessModal(false)}
+                    className="block w-full rounded-full border border-orange-400 py-2.5 text-center text-[12px] font-semibold text-orange-600 transition hover:border-orange-500 hover:text-orange-700"
+                  >
+                    Sign in
+                  </Link>
+                ) : null}
               </div>
             </div>
           </div>
