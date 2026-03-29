@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { applyReminderOwnerFilter } from "../../../../../lib/reminderAccess";
+import { getServerAuthUser } from "../../../../../lib/serverAuthUser";
 import { createSupabaseAuthClient } from "../../../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../../../lib/supabaseServer";
 
@@ -44,17 +45,7 @@ export async function POST(request, { params }) {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("client_id");
 
-    let user = null;
-    if (authClient) {
-      try {
-        const {
-          data: { user: authUser },
-        } = await authClient.auth.getUser();
-        user = authUser ?? null;
-      } catch (error) {
-        console.warn("Reminders STOP auth fetch failed:", error);
-      }
-    }
+    const user = authClient ? await getServerAuthUser(authClient) : null;
 
     if (!user && !clientId) {
       return NextResponse.json(

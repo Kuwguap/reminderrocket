@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "../lib/supabaseBrowser";
 import { formatZodErrors, reminderSchema } from "../lib/validation";
 
@@ -45,6 +53,8 @@ const stopOptions = [
 ];
 
 export default function Home() {
+  const router = useRouter();
+  const remindersFetchSeq = useRef(0);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [frequency, setFrequency] = useState("hourly");
   const [annoyMode, setAnnoyMode] = useState(false);
@@ -135,9 +145,12 @@ export default function Home() {
     syncSessionUser(true);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         if (isActive) {
           setUser(session?.user ?? null);
+        }
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+          router.refresh();
         }
       }
     );
@@ -149,26 +162,10 @@ export default function Home() {
       clearInterval(sessionPoll);
       subscription?.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, router]);
 
-  useEffect(() => {
-    if (!authReady) {
-      return;
-    }
-    if (user) {
-      loadReminders();
-      return;
-    }
-    if (clientId) {
-      loadReminders();
-      return;
-    }
-    setReminders([]);
-    setListError("");
-    setIsLoadingReminders(false);
-  }, [user, clientId, authReady]);
-
-  async function loadReminders() {
+  const loadReminders = useCallback(async () => {
+    const seq = ++remindersFetchSeq.current;
     setIsLoadingReminders(true);
     setListError("");
     try {
@@ -178,18 +175,54 @@ export default function Home() {
       }
       const response = await fetch(`/api/reminders?${params.toString()}`, {
         credentials: "include",
+        cache: "no-store",
       });
       const payload = await response.json();
       if (!response.ok) {
         throw new Error(payload?.error || "Unable to load reminders.");
       }
-      setReminders(payload.reminders ?? []);
+      if (seq !== remindersFetchSeq.current) {
+        return;
+      }
+      const rows = payload.reminders ?? [];
+      const seen = new Set();
+      const deduped = [];
+      for (const row of rows) {
+        if (!row?.id || seen.has(row.id)) continue;
+        seen.add(row.id);
+        deduped.push(row);
+      }
+      setReminders(deduped);
     } catch (error) {
-      setListError("Unable to load reminders.");
+      if (seq === remindersFetchSeq.current) {
+        setListError("Unable to load reminders.");
+      }
     } finally {
-      setIsLoadingReminders(false);
+      if (seq === remindersFetchSeq.current) {
+        setIsLoadingReminders(false);
+      }
     }
-  }
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+    if (user || clientId) {
+      loadReminders();
+      return;
+    }
+    setReminders([]);
+    setListError("");
+    setIsLoadingReminders(false);
+  }, [user, clientId, authReady, loadReminders]);
+
+  useEffect(() => {
+    if (!user?.email) {
+      return;
+    }
+    setEmail((prev) => (prev.trim() === "" ? user.email : prev));
+  }, [user?.id, user?.email]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -238,6 +271,7 @@ export default function Home() {
     try {
       const response = await fetch("/api/reminders", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
@@ -265,7 +299,6 @@ export default function Home() {
       setSubmitSuccess("");
       setMessage("");
       setPhone("");
-      setEmail("");
       setFrequency("hourly");
       setCustomFrequencyValue("");
       setCustomFrequencyUnit("minutes");
@@ -410,6 +443,7 @@ export default function Home() {
       await supabase.auth.signOut();
     }
     setShowMenu(false);
+    router.refresh();
   }
 
   const primaryButtonClass =

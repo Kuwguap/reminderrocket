@@ -48,6 +48,7 @@ export default function SignInPage() {
           setError(signInError.message);
           return;
         }
+        router.refresh();
         router.push("/");
         return;
       }
@@ -62,6 +63,7 @@ export default function SignInPage() {
       }
 
       if (data?.session) {
+        router.refresh();
         router.push("/");
         return;
       }
@@ -77,6 +79,7 @@ export default function SignInPage() {
         return;
       }
 
+      router.refresh();
       router.push("/");
     } catch (err) {
       setError("Unable to authenticate.");

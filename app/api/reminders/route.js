@@ -5,6 +5,7 @@ import { subscribeSmsProfile } from "../../../lib/klaviyo";
 import { createSupabaseAuthClient } from "../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
 import { applyReminderOwnerFilter } from "../../../lib/reminderAccess";
+import { getServerAuthUser } from "../../../lib/serverAuthUser";
 import { formatZodErrors, reminderSchema } from "../../../lib/validation";
 
 const FREQUENCY_INTERVALS_MS = {
@@ -133,17 +134,7 @@ export async function GET(request) {
     const status = searchParams.get("status");
     const clientId = searchParams.get("client_id");
 
-    let user = null;
-    if (authClient) {
-      try {
-        const {
-          data: { user: authUser },
-        } = await authClient.auth.getUser();
-        user = authUser ?? null;
-      } catch (error) {
-        console.warn("Reminders GET auth fetch failed:", error);
-      }
-    }
+    const user = authClient ? await getServerAuthUser(authClient) : null;
 
     let query = supabase
       .from("reminders")
@@ -215,17 +206,7 @@ export async function POST(request) {
     }
 
     const data = parsed.data;
-    let user = null;
-    if (authClient) {
-      try {
-        const {
-          data: { user: authUser },
-        } = await authClient.auth.getUser();
-        user = authUser ?? null;
-      } catch (error) {
-        console.warn("Reminders POST auth fetch failed:", error);
-      }
-    }
+    const user = authClient ? await getServerAuthUser(authClient) : null;
 
     const clientId = data.client_id;
     if (!user && !clientId) {
