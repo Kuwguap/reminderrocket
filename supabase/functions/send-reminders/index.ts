@@ -17,8 +17,35 @@ const requiredEnv = [
 const hasResend =
   Boolean(RESEND_API_KEY) && Boolean(RESEND_FROM_EMAIL);
 const hasKlaviyo = Boolean(KLAVIYO_API_KEY);
+const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
 const supabase = createClient(SUPABASE_URL ?? "", SUPABASE_SERVICE_ROLE_KEY ?? "");
+
+async function sendTelegramDm(chatId: number, text: string) {
+  if (!TELEGRAM_BOT_TOKEN) {
+    return { ok: false, error: "Missing TELEGRAM_BOT_TOKEN." };
+  }
+  const response = await fetch(
+    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text.slice(0, 4090),
+        disable_web_page_preview: true,
+      }),
+    }
+  );
+  const payload = await response.json();
+  if (!response.ok || payload.ok === false) {
+    return {
+      ok: false,
+      error: payload?.description ?? `HTTP ${response.status}`,
+    };
+  }
+  return { ok: true };
+}
 
 function getIntervalMs(reminder: {
   frequency_type: string;
@@ -349,9 +376,14 @@ serve(async () => {
       continue;
     }
 
+    const annoyChannel = reminder.phone
+      ? "sms"
+      : reminder.email
+      ? "email"
+      : "telegram";
     const annoyMeta =
       reminder.frequency_type === "annoy"
-        ? await getAnnoyMeta(reminder.id, reminder.phone ? "sms" : "email")
+        ? await getAnnoyMeta(reminder.id, annoyChannel)
         : null;
     const intervalMs =
       reminder.frequency_type === "annoy"
@@ -445,6 +477,54 @@ serve(async () => {
         }
       } catch (error) {
         await logAttempt(reminder.id, "email", "failed", String(error));
+      }
+    }
+
+    if (reminder.telegram_chat_id != null) {
+      try {
+        if (!TELEGRAM_BOT_TOKEN) {
+          await logAttempt(
+            reminder.id,
+            "telegram",
+            "skipped",
+            "Missing TELEGRAM_BOT_TOKEN."
+          );
+        } else {
+          hasConfiguredChannel = true;
+          const tgBody = [
+            "🔔 Reminder Rocket",
+            "",
+            smsMessage,
+            "",
+            `Next run (ET): ${formatDateTime(reminder.next_run_at)}`,
+            reminder.stop_condition === "proof"
+              ? `\nStop: picture proof required${
+                  uploadUrl ? `\n${uploadUrl}` : ""
+                }`
+              : reminder.stop_at
+              ? `\nStop (ET): ${formatDateTime(reminder.stop_at)}`
+              : "",
+          ]
+            .filter((line) => line !== "")
+            .join("\n");
+          const tgResult = await sendTelegramDm(
+            Number(reminder.telegram_chat_id),
+            tgBody
+          );
+          if (!tgResult.ok) {
+            await logAttempt(
+              reminder.id,
+              "telegram",
+              "failed",
+              tgResult.error ?? "Telegram failed"
+            );
+          } else {
+            await logAttempt(reminder.id, "telegram", "sent");
+            delivered = true;
+          }
+        }
+      } catch (error) {
+        await logAttempt(reminder.id, "telegram", "failed", String(error));
       }
     }
 

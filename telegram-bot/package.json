@@ -1,0 +1,9 @@
+{
+  "name": "reminderrocket-telegram",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.100.0",
+    "grammy": "^1.36.1"
+  }
+}

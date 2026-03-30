@@ -4,8 +4,8 @@ import { Resend } from "resend";
 import { buildReminderEmail } from "../../../../../lib/emailTemplate";
 import { applyReminderOwnerFilter } from "../../../../../lib/reminderAccess";
 import { getServerAuthUser } from "../../../../../lib/serverAuthUser";
-import { createSupabaseAuthClient } from "../../../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../../../lib/supabaseServer";
+import { getSupabaseAuthClientForRequest } from "../../../../../lib/supabaseRouteAuth";
 import { formatDateTimeNy } from "../../../../../lib/nyTime";
 
 async function sendMissionCompleteEmail(reminder, proofSignedUrl) {
@@ -73,12 +73,7 @@ export async function POST(request, { params }) {
       );
     }
 
-    let authClient = null;
-    try {
-      authClient = createSupabaseAuthClient();
-    } catch (error) {
-      console.warn("Reminders PROOF auth init failed:", error);
-    }
+    const authClient = getSupabaseAuthClientForRequest(request);
     let supabase;
     try {
       supabase = createSupabaseServerClient();
@@ -91,7 +86,8 @@ export async function POST(request, { params }) {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("client_id");
 
-    const user = authClient ? await getServerAuthUser(authClient) : null;
+    const user =
+      authClient != null ? await getServerAuthUser(authClient) : null;
 
     if (!user && !clientId) {
       return NextResponse.json(

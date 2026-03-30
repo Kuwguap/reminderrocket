@@ -6,6 +6,7 @@ import { Resend } from "resend";
 import { buildReminderEmail } from "../../../../lib/emailTemplate";
 import { sendSmsEvent } from "../../../../lib/klaviyo";
 import { formatDateTimeNy } from "../../../../lib/nyTime";
+import { sendTelegramMessage } from "../../../../lib/telegramNotify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -108,6 +109,7 @@ export async function GET(request) {
     Boolean(process.env.RESEND_FROM_EMAIL);
   const hasKlaviyo = Boolean(process.env.KLAVIYO_API_KEY);
   const appBaseUrl = process.env.APP_BASE_URL || "";
+  const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
 
   const now = new Date();
   const nowIso = now.toISOString();
@@ -137,13 +139,14 @@ export async function GET(request) {
       continue;
     }
 
+    const annoyChannel = reminder.phone
+      ? "sms"
+      : reminder.email
+        ? "email"
+        : "telegram";
     const annoyMeta =
       reminder.frequency_type === "annoy"
-        ? await getAnnoyMeta(
-            reminder.id,
-            reminder.phone ? "sms" : "email",
-            supabase
-          )
+        ? await getAnnoyMeta(reminder.id, annoyChannel, supabase)
         : null;
     const intervalMs =
       reminder.frequency_type === "annoy"
@@ -261,6 +264,64 @@ export async function GET(request) {
         await supabase.from("reminder_attempts").insert({
           reminder_id: reminder.id,
           channel: "email",
+          status: "failed",
+          error_message: String(error),
+        });
+      }
+    }
+
+    if (reminder.telegram_chat_id != null) {
+      try {
+        if (!telegramBotToken) {
+          await supabase.from("reminder_attempts").insert({
+            reminder_id: reminder.id,
+            channel: "telegram",
+            status: "skipped",
+            error_message: "Missing TELEGRAM_BOT_TOKEN.",
+          });
+        } else {
+          hasConfiguredChannel = true;
+          const tgBody = [
+            "🔔 Reminder Rocket",
+            "",
+            smsMessage,
+            "",
+            `Next run (ET): ${formatDateTimeNy(reminder.next_run_at)}`,
+            reminder.stop_condition === "proof"
+              ? `\nStop: picture proof required${
+                  uploadUrl ? `\n${uploadUrl}` : ""
+                }`
+              : reminder.stop_at
+                ? `\nStop (ET): ${formatDateTimeNy(reminder.stop_at)}`
+                : "",
+          ]
+            .filter(Boolean)
+            .join("\n");
+          const tgResult = await sendTelegramMessage(
+            telegramBotToken,
+            Number(reminder.telegram_chat_id),
+            tgBody
+          );
+          if (!tgResult.ok) {
+            await supabase.from("reminder_attempts").insert({
+              reminder_id: reminder.id,
+              channel: "telegram",
+              status: "failed",
+              error_message: tgResult.error ?? "Telegram send failed.",
+            });
+          } else {
+            await supabase.from("reminder_attempts").insert({
+              reminder_id: reminder.id,
+              channel: "telegram",
+              status: "sent",
+            });
+            delivered = true;
+          }
+        }
+      } catch (error) {
+        await supabase.from("reminder_attempts").insert({
+          reminder_id: reminder.id,
+          channel: "telegram",
           status: "failed",
           error_message: String(error),
         });

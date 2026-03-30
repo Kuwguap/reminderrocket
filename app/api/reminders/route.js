@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../lib/emailTemplate";
 import { subscribeSmsProfile } from "../../../lib/klaviyo";
-import { createSupabaseAuthClient } from "../../../lib/supabaseAuth";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
+import { getSupabaseAuthClientForRequest } from "../../../lib/supabaseRouteAuth";
 import { applyReminderOwnerFilter } from "../../../lib/reminderAccess";
 import { getServerAuthUser } from "../../../lib/serverAuthUser";
 import { formatDateTimeNy } from "../../../lib/nyTime";
@@ -107,12 +107,7 @@ async function sendConfirmationEmail(reminder) {
 
 export async function GET(request) {
   try {
-    let authClient = null;
-    try {
-      authClient = createSupabaseAuthClient();
-    } catch (error) {
-      console.warn("Reminders GET auth init failed:", error);
-    }
+    const authClient = getSupabaseAuthClientForRequest(request);
     let supabase;
     try {
       supabase = createSupabaseServerClient();
@@ -126,7 +121,8 @@ export async function GET(request) {
     const status = searchParams.get("status");
     const clientId = searchParams.get("client_id");
 
-    const user = authClient ? await getServerAuthUser(authClient) : null;
+    const user =
+      authClient != null ? await getServerAuthUser(authClient) : null;
 
     let query = supabase
       .from("reminders")
@@ -163,12 +159,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    let authClient = null;
-    try {
-      authClient = createSupabaseAuthClient();
-    } catch (error) {
-      console.warn("Reminders POST auth init failed:", error);
-    }
+    const authClient = getSupabaseAuthClientForRequest(request);
     let supabase;
     try {
       supabase = createSupabaseServerClient();
@@ -198,7 +189,8 @@ export async function POST(request) {
     }
 
     const data = parsed.data;
-    const user = authClient ? await getServerAuthUser(authClient) : null;
+    const user =
+      authClient != null ? await getServerAuthUser(authClient) : null;
 
     const clientId = data.client_id;
     if (!user && !clientId) {
@@ -244,6 +236,7 @@ export async function POST(request) {
       Boolean(process.env.RESEND_FROM_EMAIL);
     const hasKlaviyo = Boolean(process.env.KLAVIYO_API_KEY);
     const klaviyoListId = process.env.KLAVIYO_LIST_ID || null;
+    const hasTelegramBot = Boolean(process.env.TELEGRAM_BOT_TOKEN);
 
     const channelErrors = {};
     if (data.email && !hasResend) {
@@ -251,6 +244,10 @@ export async function POST(request) {
     }
     if (data.phone && !hasKlaviyo) {
       channelErrors.phone = "SMS delivery is not configured.";
+    }
+    if (data.telegram_chat_id != null && !hasTelegramBot) {
+      channelErrors.telegram_chat_id =
+        "Telegram delivery is not configured (TELEGRAM_BOT_TOKEN).";
     }
     if (Object.keys(channelErrors).length > 0) {
       return NextResponse.json({ errors: channelErrors }, { status: 400 });
@@ -297,6 +294,7 @@ export async function POST(request) {
       user_id: user ? user.id : null,
       client_id: clientId || null,
       status: "active",
+      telegram_chat_id: data.telegram_chat_id ?? null,
     };
 
     const { data: reminder, error } = await supabase

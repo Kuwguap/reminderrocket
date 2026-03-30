@@ -1,0 +1,19 @@
+# Blueprint: run the Reminder Rocket Telegram bot alongside your hosted Next app.
+# Usage:
+#   export TELEGRAM_BOT_TOKEN=... NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+#   export APP_BASE_URL=https://your-app.example.com
+#   docker compose -f docker-compose.telegram.yml up -d --build
+
+services:
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: telegram-bot/Dockerfile
+    restart: unless-stopped
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      APP_BASE_URL: ${APP_BASE_URL}

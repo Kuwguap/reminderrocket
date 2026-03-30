@@ -28,10 +28,15 @@ alter table public.reminders
 alter table public.reminders
   add column if not exists client_id text;
 
+alter table public.reminders
+  add column if not exists telegram_chat_id bigint;
+
 create index if not exists reminders_next_run_idx on public.reminders (next_run_at);
 create index if not exists reminders_status_idx on public.reminders (status);
 create index if not exists reminders_user_id_idx on public.reminders (user_id);
 create index if not exists reminders_client_id_idx on public.reminders (client_id);
+
+create index if not exists reminders_telegram_chat_id_idx on public.reminders (telegram_chat_id);
 
 create table if not exists public.reminder_attempts (
   id uuid primary key default gen_random_uuid(),
