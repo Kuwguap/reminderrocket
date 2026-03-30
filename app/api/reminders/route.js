@@ -4,7 +4,7 @@ import { buildReminderEmail } from "../../../lib/emailTemplate";
 import { subscribeSmsProfile } from "../../../lib/klaviyo";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
 import { getSupabaseAuthClientForRequest } from "../../../lib/supabaseRouteAuth";
-import { applyReminderOwnerFilter } from "../../../lib/reminderAccess";
+import { applyReminderListFilter } from "../../../lib/reminderAccess";
 import { getServerAuthUser } from "../../../lib/serverAuthUser";
 import { formatDateTimeNy } from "../../../lib/nyTime";
 import { formatZodErrors, reminderSchema } from "../../../lib/validation";
@@ -135,7 +135,7 @@ export async function GET(request) {
     }
 
     if (user || clientId) {
-      query = applyReminderOwnerFilter(query, user, clientId);
+      query = applyReminderListFilter(query, user, clientId);
     } else {
       return NextResponse.json({ reminders: [] });
     }

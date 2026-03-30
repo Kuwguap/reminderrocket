@@ -221,19 +221,35 @@ export default function Home() {
     if (!authReady) {
       return;
     }
-    if (user && clientId) {
-      fetch(`/api/reminders/claim?client_id=${encodeURIComponent(clientId)}`, {
-        method: "POST",
-        credentials: "include",
-      }).catch(() => undefined);
-    }
-    if (user || clientId) {
-      loadReminders();
-      return;
-    }
-    setReminders([]);
-    setListError("");
-    setIsLoadingReminders(false);
+    let cancelled = false;
+    (async () => {
+      if (user && clientId) {
+        try {
+          await fetch(
+            `/api/reminders/claim?client_id=${encodeURIComponent(clientId)}`,
+            {
+              method: "POST",
+              credentials: "include",
+            }
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+      if (cancelled) {
+        return;
+      }
+      if (user || clientId) {
+        await loadReminders();
+        return;
+      }
+      setReminders([]);
+      setListError("");
+      setIsLoadingReminders(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [user, clientId, authReady, loadReminders]);
 
   useEffect(() => {

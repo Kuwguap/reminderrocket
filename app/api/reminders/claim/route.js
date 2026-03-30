@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "../../../../lib/supabaseServer";
 import { getSupabaseAuthClientForRequest } from "../../../../lib/supabaseRouteAuth";
 import { getServerAuthUser } from "../../../../lib/serverAuthUser";
-import { applyReminderOwnerFilter } from "../../../../lib/reminderAccess";
 
 export async function POST(request) {
   try {
@@ -21,14 +20,12 @@ export async function POST(request) {
 
     // Only claim rows the requester already has access to (client_id match),
     // and that are not yet tied to a user_id.
-    let selectQuery = supabase
+    const selectQuery = supabase
       .from("reminders")
       .select("id, user_id, client_id")
       .eq("client_id", clientId)
       .is("user_id", null)
       .limit(200);
-
-    selectQuery = applyReminderOwnerFilter(selectQuery, user, clientId);
 
     const { data: rows, error: selectError } = await selectQuery;
     if (selectError) {
