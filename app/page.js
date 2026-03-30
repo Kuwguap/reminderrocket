@@ -95,6 +95,7 @@ export default function Home() {
   const [authError, setAuthError] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [user, setUser] = useState(null);
+  const [accessToken, setAccessToken] = useState(null);
   const [clientId, setClientId] = useState("");
   const [authReady, setAuthReady] = useState(false);
   const [reminderTick, setReminderTick] = useState(0);
@@ -150,6 +151,7 @@ export default function Home() {
         return;
       }
       setUser(data.session?.user ?? null);
+      setAccessToken(data.session?.access_token ?? null);
       if (isInitial) {
         setAuthReady(true);
       }
@@ -161,6 +163,7 @@ export default function Home() {
       (event, session) => {
         if (isActive) {
           setUser(session?.user ?? null);
+          setAccessToken(session?.access_token ?? null);
         }
         if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
           router.refresh();
@@ -189,6 +192,9 @@ export default function Home() {
       const response = await fetch(`/api/reminders?${params.toString()}`, {
         credentials: "include",
         cache: "no-store",
+        headers: accessToken
+          ? { Authorization: `Bearer ${accessToken}` }
+          : undefined,
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -230,6 +236,9 @@ export default function Home() {
             {
               method: "POST",
               credentials: "include",
+              headers: accessToken
+                ? { Authorization: `Bearer ${accessToken}` }
+                : undefined,
             }
           );
         } catch {
@@ -250,7 +259,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [user, clientId, authReady, loadReminders]);
+  }, [user, clientId, accessToken, authReady, loadReminders]);
 
   useEffect(() => {
     if (!showReminders) {
@@ -338,7 +347,10 @@ export default function Home() {
       const response = await fetch("/api/reminders", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify(parsed.data),
       });
       const rawText = await response.text();
@@ -395,6 +407,9 @@ export default function Home() {
       const response = await fetch(`/api/reminders/${reminderId}/stop${query}`, {
         method: "POST",
         credentials: "include",
+        headers: accessToken
+          ? { Authorization: `Bearer ${accessToken}` }
+          : undefined,
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -422,6 +437,9 @@ export default function Home() {
       const response = await fetch(`/api/reminders/${reminderId}/proof${query}`, {
         method: "POST",
         credentials: "include",
+        headers: accessToken
+          ? { Authorization: `Bearer ${accessToken}` }
+          : undefined,
         body: formData,
       });
       const payload = await response.json();
