@@ -220,6 +220,12 @@ export default function Home() {
     if (!authReady) {
       return;
     }
+    if (user && clientId) {
+      fetch(`/api/reminders/claim?client_id=${encodeURIComponent(clientId)}`, {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => undefined);
+    }
     if (user || clientId) {
       loadReminders();
       return;
@@ -657,7 +663,7 @@ export default function Home() {
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
                 <p className="text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600">
-                  Step 1 — Reminder
+                  Step 1 - Remind Me
                 </p>
                 <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                   <span className="sr-only">Reminder message</span>
@@ -674,7 +680,7 @@ export default function Home() {
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
                 <p className="text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600">
-                  Step 2 — Start
+                  Step 2  - Set Time 
                 </p>
                 <div className="text-[11px] font-medium text-slate-700">
                   How often (tap one)
@@ -812,7 +818,7 @@ export default function Home() {
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
                 <p className="text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600">
-                  Step 3 — Contact
+                  Step 3 - Notify Me 
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
