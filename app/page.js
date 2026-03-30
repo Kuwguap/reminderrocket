@@ -221,7 +221,7 @@ export default function Home() {
         setIsLoadingReminders(false);
       }
     }
-  }, [clientId]);
+  }, [clientId, accessToken]);
 
   useEffect(() => {
     if (!authReady) {
