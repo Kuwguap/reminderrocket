@@ -296,6 +296,47 @@ export default function Home() {
     setEmail((prev) => (prev.trim() === "" ? user.email : prev));
   }, [user?.id, user?.email]);
 
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    const metaValue =
+      user?.user_metadata?.telegram_chat_id ??
+      user?.user_metadata?.telegramChatId ??
+      null;
+    if (metaValue == null) {
+      return;
+    }
+    setTelegramChatId((prev) => (prev.trim() === "" ? String(metaValue) : prev));
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!supabase || !user) {
+      return;
+    }
+    const raw = telegramChatId.trim();
+    if (raw === "") {
+      return;
+    }
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+      return;
+    }
+    const current =
+      user?.user_metadata?.telegram_chat_id ??
+      user?.user_metadata?.telegramChatId ??
+      null;
+    if (String(current ?? "") === String(parsed)) {
+      return;
+    }
+    const id = setTimeout(() => {
+      supabase.auth
+        .updateUser({ data: { telegram_chat_id: parsed } })
+        .catch(() => undefined);
+    }, 600);
+    return () => clearTimeout(id);
+  }, [supabase, user?.id, telegramChatId]);
+
   async function handleSubmit(event) {
     event.preventDefault();
     setFormErrors({});
@@ -319,13 +360,22 @@ export default function Home() {
         : null;
 
     const selectedFrequency = annoyMode ? "annoy" : frequency;
+    const telegramIdToSend =
+      telegramChatId.trim() !== ""
+        ? Number(telegramChatId.trim())
+        : user?.user_metadata?.telegram_chat_id != null
+          ? Number(user.user_metadata.telegram_chat_id)
+          : null;
     const payload = {
       client_id: clientId || null,
       message: message.trim(),
       recipient_name: "You",
       phone,
       email,
-      telegram_chat_id: telegramChatId.trim() ? Number(telegramChatId.trim()) : null,
+      telegram_chat_id:
+        telegramIdToSend != null && Number.isFinite(telegramIdToSend)
+          ? telegramIdToSend
+          : null,
       frequency_type: selectedFrequency,
       frequency_value:
         !annoyMode && frequency === "custom" ? customFrequencyValue : null,
@@ -1084,6 +1134,16 @@ export default function Home() {
                           </p>
                           <p className="text-xs text-slate-500">
                             Recipient: {reminder.recipient_name || "Recipient"}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Notify via:{" "}
+                            {[
+                              reminder.phone ? "SMS" : null,
+                              reminder.email ? "Email" : null,
+                              reminder.telegram_chat_id != null ? "Telegram" : null,
+                            ]
+                              .filter(Boolean)
+                              .join(", ") || "—"}
                           </p>
                           <p className="text-xs text-slate-500">
                             Start time (ET):{" "}
