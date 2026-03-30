@@ -71,6 +71,7 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [telegramChatId, setTelegramChatId] = useState("");
   const [customFrequencyValue, setCustomFrequencyValue] = useState("");
   const [customFrequencyUnit, setCustomFrequencyUnit] = useState("minutes");
   const [scheduledAt, setScheduledAt] = useState("");
@@ -299,6 +300,7 @@ export default function Home() {
       recipient_name: "You",
       phone,
       email,
+      telegram_chat_id: telegramChatId.trim() ? Number(telegramChatId.trim()) : null,
       frequency_type: selectedFrequency,
       frequency_value:
         !annoyMode && frequency === "custom" ? customFrequencyValue : null,
@@ -355,6 +357,7 @@ export default function Home() {
       setScheduledAt("");
       setStopCondition("proof");
       setStopAt("");
+      setTelegramChatId("");
       await loadReminders();
       setShowSuccessModal(true);
     } catch (error) {
@@ -595,7 +598,7 @@ export default function Home() {
           </div>
         </header> */}
 
-        <section className="grid w-full items-start gap-4 lg:grid-cols-[1.2fr,0.8fr]">
+        <section className="grid w-full items-start gap-0 lg:grid-cols-[1.2fr,0.8fr]">
           <div className="w-full self-start rounded-3xl border border-orange-200 bg-white p-[18px] shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-[11px] font-semibold text-slate-900">
@@ -649,7 +652,7 @@ export default function Home() {
               )}
             </div>
 
-            <form className="mt-[10px] grid gap-[8px]" onSubmit={handleSubmit}>
+            <form className="mt-[6px] grid gap-[4px]" onSubmit={handleSubmit}>
               {submitError ? (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 px-[14px] py-[10px] text-[11px] text-rose-600">
                   {submitError}
@@ -661,7 +664,7 @@ export default function Home() {
                 </div>
               ) : null}
 
-              <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
+              <div className="grid gap-[2px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
                 <p className="text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600">
                   Step 1 - Remind Me
                 </p>
@@ -672,13 +675,13 @@ export default function Home() {
                     placeholder="Remind me to..."
                     value={message}
                     onChange={(event) => setMessage(event.target.value)}
-                    className="w-full resize-none rounded-2xl border border-orange-200 bg-white px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full resize-none rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                   {renderError("message")}
                 </label>
               </div>
 
-              <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
+              <div className="grid gap-[2px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
                 <p className="text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600">
                   Step 2  - Set Time 
                 </p>
@@ -708,7 +711,7 @@ export default function Home() {
                   </div>
                 </div>
                 {!annoyMode && frequency === "custom" ? (
-                  <div className="grid gap-[6px] sm:grid-cols-[1fr,120px]">
+                  <div className="grid gap-[2px] sm:grid-cols-[1fr,120px]">
                     <input
                       type="number"
                       min={5}
@@ -718,14 +721,14 @@ export default function Home() {
                       onChange={(event) =>
                         setCustomFrequencyValue(event.target.value)
                       }
-                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
                     <select
                       value={customFrequencyUnit}
                       onChange={(event) =>
                         setCustomFrequencyUnit(event.target.value)
                       }
-                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     >
                       <option value="minutes">Minutes</option>
                       <option value="hours">Hours</option>
@@ -735,7 +738,7 @@ export default function Home() {
                 ) : null}
                 {renderError("frequency_value")}
 
-                <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-orange-200 bg-white px-[10px] py-[8px]">
+                <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-orange-200 bg-white px-[10px] py-[5px]">
                   <input
                     type="checkbox"
                     checked={annoyMode}
@@ -749,7 +752,7 @@ export default function Home() {
                   </span>
                 </label>
 
-                <div className="grid gap-[10px] rounded-2xl border border-orange-100 bg-white px-[10px] py-[10px] md:grid-cols-2">
+                <div className="grid gap-[6px] rounded-2xl border border-orange-100 bg-white px-[10px] py-[10px] md:grid-cols-2">
                   <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                     Start time (Eastern)
                     <div className="flex flex-wrap items-center gap-2">
@@ -779,7 +782,7 @@ export default function Home() {
                           type="datetime-local"
                           value={scheduledAt}
                           onChange={(event) => setScheduledAt(event.target.value)}
-                          className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          className="w-full rounded-2xl border border-orange-200 px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                         {renderError("start_time")}
                       </label>
@@ -791,7 +794,7 @@ export default function Home() {
                     <select
                       value={stopCondition}
                       onChange={(event) => setStopCondition(event.target.value)}
-                      className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full rounded-2xl border border-orange-200 px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     >
                       {stopOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -807,7 +810,7 @@ export default function Home() {
                           type="datetime-local"
                           value={stopAt}
                           onChange={(event) => setStopAt(event.target.value)}
-                          className="w-full rounded-2xl border border-orange-200 px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          className="w-full rounded-2xl border border-orange-200 px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                         />
                         {renderError("stop_at")}
                       </label>
@@ -816,11 +819,11 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
+              <div className="grid gap-[2px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
                 <p className="text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600">
                   Step 3 - Notify Me 
                 </p>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-[2px] md:grid-cols-2">
                   <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                     Text Rocket
                     <input
@@ -828,7 +831,7 @@ export default function Home() {
                       placeholder="(555) 123-4567"
                       value={phone}
                       onChange={(event) => setPhone(event.target.value)}
-                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
                     {renderError("phone")}
                   </label>
@@ -840,11 +843,23 @@ export default function Home() {
                       placeholder="rocket@launch.com"
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
-                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
                     {renderError("email")}
                   </label>
                 </div>
+                <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
+                  Telegram Rocket
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="Telegram chat id (optional)"
+                    value={telegramChatId}
+                    onChange={(event) => setTelegramChatId(event.target.value)}
+                    className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                  {renderError("telegram_chat_id")}
+                </label>
               </div>
 
               <button
@@ -975,9 +990,10 @@ export default function Home() {
         ) : null}
 
         {showReminders && (user || clientId) ? (
-          <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-950/40 px-4">
-            <div className="w-full max-w-xl rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
-              <div className="flex items-center justify-between">
+          <div className="fixed inset-0 z-20 overflow-y-auto bg-slate-950/40 px-4 py-6">
+            <div className="mx-auto w-full max-w-xl rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
+              <div className="sticky top-0 z-10 -mx-4 -mt-4 rounded-t-3xl border-b border-orange-100 bg-white px-4 pb-3 pt-4">
+                <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-900">
                   Active reminders
                 </h3>
@@ -997,6 +1013,7 @@ export default function Home() {
                   >
                     ×
                   </button>
+                </div>
                 </div>
               </div>
 
