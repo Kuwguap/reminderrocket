@@ -57,8 +57,8 @@ const frequencyOptions = [
 ];
 
 const stopOptions = [
-  { value: "time", label: "Stop at a set time" },
-  { value: "proof", label: "Stop when I upload proof" },
+  { value: "time", label: "End at a specific time" },
+  { value: "proof", label: "Require picture proof" },
 ];
 
 export default function Home() {
@@ -593,7 +593,7 @@ export default function Home() {
           <div className="w-full self-start rounded-3xl border border-orange-200 bg-white p-[18px] shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-[11px] font-semibold text-slate-900">
-                Launch a reminder
+                Create a reminder
               </h2>
               {user ? (
                 <div className="relative z-40" ref={profileMenuRef}>
@@ -657,13 +657,13 @@ export default function Home() {
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
                 <p className="text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600">
-                  Step 1 — Say it
+                  Step 1 — Reminder
                 </p>
                 <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                   <span className="sr-only">Reminder message</span>
                   <textarea
                     rows={2}
-                    placeholder="Write what you’ll finish…"
+                    placeholder="Remind me to..."
                     value={message}
                     onChange={(event) => setMessage(event.target.value)}
                     className="w-full resize-none rounded-2xl border border-orange-200 bg-white px-[10px] py-[6px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -674,10 +674,10 @@ export default function Home() {
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
                 <p className="text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600">
-                  Step 2 — Nudge cadence
+                  Step 2 — Start
                 </p>
                 <div className="text-[11px] font-medium text-slate-700">
-                  Pick how often we ping you
+                  How often (tap one)
                   <div
                     className={`mt-1 flex flex-nowrap gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${annoyMode ? "pointer-events-none opacity-40" : ""}`}
                   >
@@ -738,14 +738,14 @@ export default function Home() {
                   />
                   <span className="grid gap-1 text-[11px] text-slate-700">
                     <span className="font-semibold text-slate-900">
-                      Crank up “annoy me” until it’s done
+                      Annoy me until done
                     </span>
                   </span>
                 </label>
 
                 <div className="grid gap-[10px] rounded-2xl border border-orange-100 bg-white px-[10px] py-[10px] md:grid-cols-2">
                   <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                    When to start (Eastern)
+                    Start time (Eastern)
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
@@ -754,7 +754,7 @@ export default function Home() {
                           startTiming === "now" ? "" : "opacity-70"
                         }`}
                       >
-                        Fire now
+                        Start now
                       </button>
                       <button
                         type="button"
@@ -763,7 +763,7 @@ export default function Home() {
                           startTiming === "schedule" ? "" : "opacity-70"
                         }`}
                       >
-                        Schedule it
+                        Schedule
                       </button>
                     </div>
                     {startTiming === "schedule" ? (
@@ -781,7 +781,7 @@ export default function Home() {
                   </div>
 
                   <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                    How it stops
+                    Stop condition
                     <select
                       value={stopCondition}
                       onChange={(event) => setStopCondition(event.target.value)}
@@ -812,11 +812,11 @@ export default function Home() {
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
                 <p className="text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600">
-                  Step 3 — Ping routes
+                  Step 3 — Contact
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                    Blast SMS
+                    Text Rocket
                     <input
                       type="tel"
                       placeholder="(555) 123-4567"
@@ -828,7 +828,7 @@ export default function Home() {
                   </label>
 
                   <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                    Hit email
+                    Email Rocket
                     <input
                       type="email"
                       placeholder="rocket@launch.com"
@@ -847,10 +847,10 @@ export default function Home() {
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  "Blasting off…"
+                  "Launching..."
                 ) : (
                   <>
-                    Blast it live
+                    Launch rocket
                     <span className="ml-1 inline-block animate-spin">🚀</span>
                   </>
                 )}
@@ -865,15 +865,15 @@ export default function Home() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-semibold text-slate-900">
-                    Reminders live:{" "}
-                    {isLoadingReminders ? "Loading…" : reminders.length}
+                    Active reminders:{" "}
+                    {isLoadingReminders ? "Loading..." : reminders.length}
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowReminders(true)}
                     className="rounded-full border border-orange-300 px-[10px] py-[4px] text-[11px] font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600"
                   >
-                    Open list
+                    View
                   </button>
                 </div>
                 {listError ? (
@@ -927,12 +927,12 @@ export default function Home() {
                 Reminder Rocket
               </p>
               <h3 className="mt-2 text-base font-semibold text-slate-900">
-                You launched it
+                Reminder launched
               </h3>
               <p className="mt-1 text-[12px] text-slate-600">
                 {user
-                  ? "Keep going — stack another mission anytime."
-                  : "Keep going — sign in to sync reminders across web, Telegram, and devices."}
+                  ? "You’re set. Add another mission whenever you’re ready."
+                  : "You’re set. Add another mission, or sign in to keep reminders on every device."}
               </p>
               <div className="mt-4 grid gap-2">
                 <button
@@ -940,7 +940,7 @@ export default function Home() {
                   onClick={() => setShowSuccessModal(false)}
                   className="w-full rounded-full bg-orange-500 py-2.5 text-[12px] font-semibold text-white transition hover:bg-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
                 >
-                  Launch another
+                  Add another reminder
                 </button>
                 {user ? (
                   <button
@@ -952,7 +952,7 @@ export default function Home() {
                     }}
                     className="w-full rounded-full border border-orange-400 py-2.5 text-[12px] font-semibold text-orange-600 transition hover:border-orange-500 hover:text-orange-700"
                   >
-                    Open active list
+                    View reminders
                   </button>
                 ) : (
                   <Link
@@ -960,7 +960,7 @@ export default function Home() {
                     onClick={() => setShowSuccessModal(false)}
                     className="block w-full rounded-full border border-orange-400 py-2.5 text-center text-[12px] font-semibold text-orange-600 transition hover:border-orange-500 hover:text-orange-700"
                   >
-                    Sign in to sync
+                    Sign in
                   </Link>
                 )}
               </div>
@@ -973,7 +973,7 @@ export default function Home() {
             <div className="w-full max-w-xl rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-900">
-                  Active missions
+                  Active reminders
                 </h3>
                 <div className="flex items-center gap-1">
                   <button
@@ -981,7 +981,7 @@ export default function Home() {
                     onClick={loadReminders}
                     className="rounded-full border border-orange-300 px-3 py-1 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600"
                   >
-                    Refresh list
+                    Refresh
                   </button>
                   <button
                     type="button"
@@ -1132,7 +1132,7 @@ export default function Home() {
             <div className="w-full max-w-sm rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-900">
-                  Jump in
+                  Account access
                 </h3>
                 <button
                   type="button"
@@ -1172,7 +1172,7 @@ export default function Home() {
                     disabled={isAuthLoading}
                     className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {isAuthLoading ? "Opening session…" : "Sign me in"}
+                    {isAuthLoading ? "Signing in..." : "Sign in"}
                   </button>
                   <button
                     type="button"
@@ -1180,12 +1180,12 @@ export default function Home() {
                     disabled={isAuthLoading}
                     className="rounded-full border border-orange-300 px-4 py-2 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    Spin up account
+                    Create account
                   </button>
                 </div>
               </form>
               <p className="mt-3 text-xs text-slate-500">
-                Skip account to run device-only reminders on this browser.
+                Continue without an account to use local device reminders only.
               </p>
             </div>
           </div>
