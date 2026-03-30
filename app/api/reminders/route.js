@@ -236,22 +236,6 @@ export async function POST(request) {
       Boolean(process.env.RESEND_FROM_EMAIL);
     const hasKlaviyo = Boolean(process.env.KLAVIYO_API_KEY);
     const klaviyoListId = process.env.KLAVIYO_LIST_ID || null;
-    const hasTelegramBot = Boolean(process.env.TELEGRAM_BOT_TOKEN);
-
-    const channelErrors = {};
-    if (data.email && !hasResend) {
-      channelErrors.email = "Email delivery is not configured.";
-    }
-    if (data.phone && !hasKlaviyo) {
-      channelErrors.phone = "SMS delivery is not configured.";
-    }
-    if (data.telegram_chat_id != null && !hasTelegramBot) {
-      channelErrors.telegram_chat_id =
-        "Telegram delivery is not configured (TELEGRAM_BOT_TOKEN).";
-    }
-    if (Object.keys(channelErrors).length > 0) {
-      return NextResponse.json({ errors: channelErrors }, { status: 400 });
-    }
 
     if (data.phone && hasKlaviyo) {
       try {
@@ -294,14 +278,46 @@ export async function POST(request) {
       user_id: user ? user.id : null,
       client_id: clientId || null,
       status: "active",
-      telegram_chat_id: data.telegram_chat_id ?? null,
     };
 
-    const { data: reminder, error } = await supabase
-      .from("reminders")
-      .insert(insertPayload)
-      .select("*")
-      .single();
+    if (data.telegram_chat_id != null) {
+      insertPayload.telegram_chat_id = data.telegram_chat_id;
+    }
+
+    let reminder = null;
+    let error = null;
+    {
+      const attempt = await supabase
+        .from("reminders")
+        .insert(insertPayload)
+        .select("*")
+        .single();
+      reminder = attempt.data ?? null;
+      error = attempt.error ?? null;
+    }
+
+    // If the database hasn't been migrated yet, Telegram must stay optional.
+    // Supabase may return a schema-cache error like:
+    // "Could not find the 'telegram_chat_id' column of 'reminders' in the schema cache"
+    if (
+      error &&
+      String(error.message || "")
+        .toLowerCase()
+        .includes("telegram_chat_id") &&
+      String(error.message || "")
+        .toLowerCase()
+        .includes("schema cache")
+    ) {
+      const fallbackPayload = { ...insertPayload };
+      delete fallbackPayload.telegram_chat_id;
+      const fallback = await supabase
+        .from("reminders")
+        .insert(fallbackPayload)
+        .select("*")
+        .single();
+      reminder = fallback.data ?? null;
+      error = fallback.error ?? null;
+    }
 
     if (error) {
       console.error("Reminders POST error:", error);
