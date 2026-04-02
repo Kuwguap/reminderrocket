@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../lib/emailTemplate";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
-import { isTwilioConfigured } from "../../../lib/twilioSms";
+import { isVonageConfigured } from "../../../lib/vonageSms";
 import { getSupabaseAuthClientForRequest } from "../../../lib/supabaseRouteAuth";
 import { applyReminderListFilter } from "../../../lib/reminderAccess";
 import { getServerAuthUser } from "../../../lib/serverAuthUser";
@@ -231,12 +231,12 @@ export async function POST(request) {
       );
     }
 
-    if (data.phone && !isTwilioConfigured()) {
+    if (data.phone && !isVonageConfigured()) {
       return NextResponse.json(
         {
           errors: {
             phone:
-              "SMS requires Twilio: set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER (or TWILIO_MESSAGING_SERVICE_SID).",
+              "SMS requires Vonage: set VONAGE_API_KEY, VONAGE_API_SECRET, and VONAGE_SMS_FROM.",
           },
         },
         { status: 400 }

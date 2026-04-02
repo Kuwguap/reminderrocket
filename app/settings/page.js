@@ -219,7 +219,7 @@ export default function SettingsPage() {
               Integrations & health checks
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-            Verify your Supabase, Twilio, and Resend configuration.
+            Verify your Supabase, Vonage, and Resend configuration.
             </p>
           </div>
           <button
@@ -276,14 +276,14 @@ export default function SettingsPage() {
               <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-orange-200 px-4 py-3">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">
-                    Twilio SMS
+                    Vonage SMS
                   </p>
                   <p className="text-xs text-slate-500">
-                    Account SID + auth token + from number or messaging service
+                    API key + API secret + sender (number or alphanumeric)
                   </p>
                 </div>
-                <span className={pillClass(health?.summary?.twilio)}>
-                  {health?.summary?.twilio ? "Ready" : "Missing env vars"}
+                <span className={pillClass(health?.summary?.vonage)}>
+                  {health?.summary?.vonage ? "Ready" : "Missing env vars"}
                 </span>
               </div>
             </div>
@@ -374,7 +374,7 @@ export default function SettingsPage() {
         <section className="mt-6 rounded-3xl border border-orange-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Self-test</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Send a test email or a direct SMS via Twilio.
+            Send a test email or a direct SMS via Vonage.
           </p>
 
           <form className="mt-4 grid gap-4" onSubmit={runTest}>

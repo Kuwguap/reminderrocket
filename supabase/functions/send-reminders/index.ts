@@ -6,14 +6,19 @@ const SUPABASE_URL =
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL");
-const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID")?.trim() ?? "";
-const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN")?.trim() ?? "";
-const TWILIO_FROM =
-  Deno.env.get("TWILIO_FROM_NUMBER")?.trim() ||
-  Deno.env.get("TWILIO_PHONE_NUMBER")?.trim() ||
+const VONAGE_API_KEY =
+  Deno.env.get("VONAGE_API_KEY")?.trim() ||
+  Deno.env.get("NEXMO_API_KEY")?.trim() ||
   "";
-const TWILIO_MESSAGING_SERVICE_SID =
-  Deno.env.get("TWILIO_MESSAGING_SERVICE_SID")?.trim() ?? "";
+const VONAGE_API_SECRET =
+  Deno.env.get("VONAGE_API_SECRET")?.trim() ||
+  Deno.env.get("NEXMO_API_SECRET")?.trim() ||
+  "";
+const VONAGE_SMS_FROM =
+  Deno.env.get("VONAGE_SMS_FROM")?.trim() ||
+  Deno.env.get("VONAGE_FROM_NUMBER")?.trim() ||
+  Deno.env.get("VONAGE_FROM")?.trim() ||
+  "";
 const APP_BASE_URL = Deno.env.get("APP_BASE_URL") || "";
 
 const requiredEnv = [
@@ -23,10 +28,8 @@ const requiredEnv = [
 
 const hasResend =
   Boolean(RESEND_API_KEY) && Boolean(RESEND_FROM_EMAIL);
-const hasTwilio = Boolean(
-  TWILIO_ACCOUNT_SID &&
-    TWILIO_AUTH_TOKEN &&
-    (TWILIO_MESSAGING_SERVICE_SID || TWILIO_FROM)
+const hasVonage = Boolean(
+  VONAGE_API_KEY && VONAGE_API_SECRET && VONAGE_SMS_FROM
 );
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
@@ -144,37 +147,65 @@ function normalizeSmsDestination(phone: string): string | null {
   return null;
 }
 
-async function sendTwilioSms(to: string, body: string) {
+function toVonageMsisdn(e164: string): string | null {
+  const digits = e164.replace(/^\+/, "").replace(/\D/g, "");
+  return digits || null;
+}
+
+function formatVonageFrom(from: string): string {
+  const t = from.trim();
+  if (!t) {
+    return "";
+  }
+  if (/^\d/.test(t) || t.startsWith("+")) {
+    return t.replace(/^\+/, "").replace(/\D/g, "");
+  }
+  return t.slice(0, 11);
+}
+
+async function sendVonageSms(to: string, body: string) {
   const toE164 = normalizeSmsDestination(to);
-  if (!toE164) {
+  const toMsisdn = toE164 ? toVonageMsisdn(toE164) : null;
+  if (!toMsisdn) {
     throw new Error(
       "Invalid phone number. Use E.164 (e.g. +15551234567 or US 10-digit)."
     );
   }
 
-  const params = new URLSearchParams();
-  params.set("To", toE164);
-  params.set("Body", body.slice(0, 1600));
-  if (TWILIO_MESSAGING_SERVICE_SID) {
-    params.set("MessagingServiceSid", TWILIO_MESSAGING_SERVICE_SID);
-  } else {
-    params.set("From", TWILIO_FROM);
-  }
+  const payload = {
+    api_key: VONAGE_API_KEY,
+    api_secret: VONAGE_API_SECRET,
+    to: toMsisdn,
+    from: formatVonageFrom(VONAGE_SMS_FROM),
+    text: body.slice(0, 1600),
+  };
 
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-  const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
-  const response = await fetch(url, {
+  const response = await fetch("https://rest.nexmo.com/sms/json", {
     method: "POST",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || `Twilio request failed (${response.status}).`);
+  const text = await response.text();
+  let data: { messages?: Array<Record<string, unknown>> };
+  try {
+    data = JSON.parse(text) as { messages?: Array<Record<string, unknown>> };
+  } catch {
+    throw new Error(text || `Vonage request failed (${response.status}).`);
+  }
+
+  const first = data?.messages?.[0];
+  if (!first) {
+    throw new Error(text || "Vonage returned an unexpected response.");
+  }
+
+  const status = String(first.status ?? "");
+  if (status !== "0") {
+    const err =
+      (first["error-text"] as string) ||
+      (first["error_text"] as string) ||
+      `Vonage SMS failed (status ${status}).`;
+    throw new Error(err);
   }
 }
 
@@ -395,16 +426,16 @@ serve(async () => {
 
     if (reminder.phone) {
       try {
-        if (!hasTwilio) {
+        if (!hasVonage) {
           await logAttempt(
             reminder.id,
             "sms",
             "skipped",
-            "Missing Twilio configuration."
+            "Missing Vonage configuration."
           );
         } else {
           hasConfiguredChannel = true;
-          await sendTwilioSms(reminder.phone, smsMessage);
+          await sendVonageSms(reminder.phone, smsMessage);
           await logAttempt(reminder.id, "sms", "sent");
           delivered = true;
         }

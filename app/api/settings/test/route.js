@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../../lib/emailTemplate";
-import { isTwilioConfigured, sendTwilioSms } from "../../../../lib/twilioSms";
+import { isVonageConfigured, sendVonageSms } from "../../../../lib/vonageSms";
 
 function hasValue(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -67,11 +67,11 @@ export async function POST(request) {
   }
 
   if (phone) {
-    if (!isTwilioConfigured()) {
-      results.sms = { status: "skipped", error: "Missing Twilio env vars." };
+    if (!isVonageConfigured()) {
+      results.sms = { status: "skipped", error: "Missing Vonage env vars." };
     } else {
       try {
-        await sendTwilioSms({
+        await sendVonageSms({
           to: phone,
           body: "Reminder Rocket test SMS",
         });

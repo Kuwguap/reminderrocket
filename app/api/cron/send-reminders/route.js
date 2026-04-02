@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../../lib/emailTemplate";
 import { formatDateTimeNy } from "../../../../lib/nyTime";
-import { isTwilioConfigured, sendTwilioSms } from "../../../../lib/twilioSms";
+import { isVonageConfigured, sendVonageSms } from "../../../../lib/vonageSms";
 import { sendTelegramMessage } from "../../../../lib/telegramNotify";
 
 export const runtime = "nodejs";
@@ -107,7 +107,7 @@ export async function GET(request) {
   const hasResend =
     Boolean(process.env.RESEND_API_KEY) &&
     Boolean(process.env.RESEND_FROM_EMAIL);
-  const hasTwilio = isTwilioConfigured();
+  const hasVonage = isVonageConfigured();
   const appBaseUrl = process.env.APP_BASE_URL || "";
   const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -169,16 +169,16 @@ export async function GET(request) {
 
     if (reminder.phone) {
       try {
-        if (!hasTwilio) {
+        if (!hasVonage) {
           await supabase.from("reminder_attempts").insert({
             reminder_id: reminder.id,
             channel: "sms",
             status: "skipped",
-            error_message: "Missing Twilio configuration.",
+            error_message: "Missing Vonage configuration.",
           });
         } else {
           hasConfiguredChannel = true;
-          await sendTwilioSms({ to: reminder.phone, body: smsMessage });
+          await sendVonageSms({ to: reminder.phone, body: smsMessage });
           await supabase.from("reminder_attempts").insert({
             reminder_id: reminder.id,
             channel: "sms",

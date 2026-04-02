@@ -10,7 +10,7 @@ https://reminderrocket.vercel.app
 
 ## ✨ Features
 
-* **Dual-Channel Alerts:** Integration with **Twilio** (SMS) and **Resend** (Email).
+* **Dual-Channel Alerts:** Integration with **Vonage** (SMS) and **Resend** (Email).
 * **Flexible Recipients:** Send reminders to yourself or "Someone Special."
 * **Smart Stop Conditions:** End reminders at a specific time or require **Picture Proof** to stop the notifications.
 * **Custom Frequency:** Set your own orbit—remind every hour, day, or custom interval.
@@ -21,7 +21,7 @@ https://reminderrocket.vercel.app
 * **Frontend:** Next.js / React
 * **Database & Auth:** [Supabase](https://supabase.com/)
 * **Email Service:** [Resend](https://resend.com/)
-* **SMS Service:** [Twilio](https://www.twilio.com/)
+* **SMS Service:** [Vonage](https://www.vonage.com/communications-apis/)
 * **Styling:** Tailwind CSS
 
 ## ⚙️ Environment Variables
@@ -34,13 +34,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 RESEND_API_KEY=your_resend_key
 RESEND_FROM_EMAIL=Reminder Rocket <noreply@reminderrocket.com>
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_FROM_NUMBER=+15551234567
-# Or use a Messaging Service instead of a From number:
-# TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxx
+VONAGE_API_KEY=your_vonage_api_key
+VONAGE_API_SECRET=your_vonage_api_secret
+VONAGE_SMS_FROM=12025550123
 APP_BASE_URL=http://localhost:3000
 ```
+
+`VONAGE_SMS_FROM` can be your Vonage virtual number (digits, optional `+`) or an approved alphanumeric sender (where supported). You can also use `VONAGE_FROM_NUMBER` or `NEXMO_*` key names as documented in `lib/vonageSms.js`.
 
 ## 🚀 Local Setup
 
@@ -50,18 +50,18 @@ APP_BASE_URL=http://localhost:3000
    ```
 2. Copy `.env.example` to `.env` and fill in values.
 3. Run the Supabase SQL in `supabase/schema.sql`.
-4. Deploy the Edge Function in `supabase/functions/send-reminders` (set the same Twilio secrets there if you use Supabase cron).
+4. Deploy the Edge Function in `supabase/functions/send-reminders` (set the same Vonage secrets there if you use Supabase cron).
 5. Start the app:
    ```bash
    npm run dev
    ```
 
-## 📲 Twilio SMS Setup
+## 📲 Vonage SMS Setup
 
-1. Create a [Twilio](https://www.twilio.com/) account and buy an SMS-capable phone number (or configure a [Messaging Service](https://www.twilio.com/docs/messaging/services)).
-2. Set `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` from the Twilio Console.
-3. Set either `TWILIO_FROM_NUMBER` / `TWILIO_PHONE_NUMBER` (E.164) **or** `TWILIO_MESSAGING_SERVICE_SID`.
-4. Reminder SMS are sent directly via the [Messages API](https://www.twilio.com/docs/sms/api/message-resource) when cron runs—no separate marketing flow.
+1. Create a [Vonage](https://www.vonage.com/communications-apis/) account and note your **API key** and **API secret** from the dashboard.
+2. Rent or attach an SMS-capable **virtual number** (or configure an allowed alphanumeric sender for your use case and region).
+3. Set `VONAGE_API_KEY`, `VONAGE_API_SECRET`, and `VONAGE_SMS_FROM` to match that sender.
+4. Reminder SMS are sent with the [SMS API](https://developer.vonage.com/en/messaging/sms/overview) (`POST https://rest.nexmo.com/sms/json`) when cron runs.
 
 ## 🧩 Supabase Notes
 

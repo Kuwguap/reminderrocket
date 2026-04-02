@@ -16,10 +16,10 @@ Required secrets:
 - `RESEND_FROM_EMAIL`
 - `APP_BASE_URL`
 
-For SMS, also set Twilio (same variables as the Next.js app):
-- `TWILIO_ACCOUNT_SID`
-- `TWILIO_AUTH_TOKEN`
-- `TWILIO_FROM_NUMBER` or `TWILIO_PHONE_NUMBER` **or** `TWILIO_MESSAGING_SERVICE_SID`
+For SMS, also set Vonage (same variables as the Next.js app):
+- `VONAGE_API_KEY` (or `NEXMO_API_KEY`)
+- `VONAGE_API_SECRET` (or `NEXMO_API_SECRET`)
+- `VONAGE_SMS_FROM` (or `VONAGE_FROM_NUMBER` / `VONAGE_FROM`)
 
 ## Schedule (Cron)
 - In the Supabase dashboard, create a scheduled trigger to call:

@@ -6,11 +6,10 @@ function hasValue(value) {
 }
 
 export async function GET() {
-  const twilioFrom =
-    hasValue(process.env.TWILIO_FROM_NUMBER) ||
-    hasValue(process.env.TWILIO_PHONE_NUMBER);
-  const twilioSender =
-    twilioFrom || hasValue(process.env.TWILIO_MESSAGING_SERVICE_SID);
+  const vonageFrom =
+    hasValue(process.env.VONAGE_SMS_FROM) ||
+    hasValue(process.env.VONAGE_FROM_NUMBER) ||
+    hasValue(process.env.VONAGE_FROM);
 
   const envStatus = {
     supabaseUrl: hasValue(process.env.NEXT_PUBLIC_SUPABASE_URL),
@@ -18,22 +17,23 @@ export async function GET() {
     supabaseServiceKey: hasValue(process.env.SUPABASE_SERVICE_ROLE_KEY),
     resendKey: hasValue(process.env.RESEND_API_KEY),
     resendFrom: hasValue(process.env.RESEND_FROM_EMAIL),
-    twilioAccountSid: hasValue(process.env.TWILIO_ACCOUNT_SID),
-    twilioAuthToken: hasValue(process.env.TWILIO_AUTH_TOKEN),
-    twilioFromNumber: twilioFrom,
-    twilioMessagingServiceSid: hasValue(
-      process.env.TWILIO_MESSAGING_SERVICE_SID
-    ),
+    vonageApiKey:
+      hasValue(process.env.VONAGE_API_KEY) ||
+      hasValue(process.env.NEXMO_API_KEY),
+    vonageApiSecret:
+      hasValue(process.env.VONAGE_API_SECRET) ||
+      hasValue(process.env.NEXMO_API_SECRET),
+    vonageSmsFrom: vonageFrom,
     appBaseUrl: hasValue(process.env.APP_BASE_URL),
   };
 
   const summary = {
     supabase: false,
     resend: envStatus.resendKey && envStatus.resendFrom,
-    twilio:
-      envStatus.twilioAccountSid &&
-      envStatus.twilioAuthToken &&
-      twilioSender,
+    vonage:
+      envStatus.vonageApiKey &&
+      envStatus.vonageApiSecret &&
+      envStatus.vonageSmsFrom,
   };
 
   let supabaseError = null;
