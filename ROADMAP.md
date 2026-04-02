@@ -10,7 +10,7 @@ Auth: Set up Supabase Auth to handle "For me" vs. "For someone special" logic.
 Phase 2: The Communication Engine
 Email Integration: Connect the Resend SDK to handle HTML-based reminder templates.
 
-SMS Integration: Set up the Klaviyo API to dispatch text messages.
+SMS Integration: Use Twilio’s Messages API to dispatch transactional text messages.
 
 Edge Functions: Create a Supabase Edge Function (or a Cron Job) that runs every minute to check which reminders are due based on the frequency and start_time.
 

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../lib/emailTemplate";
-import { subscribeSmsProfile } from "../../../lib/klaviyo";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
+import { isTwilioConfigured } from "../../../lib/twilioSms";
 import { getSupabaseAuthClientForRequest } from "../../../lib/supabaseRouteAuth";
 import { applyReminderListFilter } from "../../../lib/reminderAccess";
 import { getServerAuthUser } from "../../../lib/serverAuthUser";
@@ -231,31 +231,16 @@ export async function POST(request) {
       );
     }
 
-    const hasResend =
-      Boolean(process.env.RESEND_API_KEY) &&
-      Boolean(process.env.RESEND_FROM_EMAIL);
-    const hasKlaviyo = Boolean(process.env.KLAVIYO_API_KEY);
-    const klaviyoListId = process.env.KLAVIYO_LIST_ID || null;
-
-    if (data.phone && hasKlaviyo) {
-      try {
-        await subscribeSmsProfile({
-          apiKey: process.env.KLAVIYO_API_KEY,
-          email: data.email || null,
-          phoneNumber: data.phone,
-          listId: klaviyoListId,
-        });
-      } catch (error) {
-        return NextResponse.json(
-          {
-            errors: {
-              phone:
-                "Unable to subscribe this phone number for SMS. Check Klaviyo SMS setup.",
-            },
+    if (data.phone && !isTwilioConfigured()) {
+      return NextResponse.json(
+        {
+          errors: {
+            phone:
+              "SMS requires Twilio: set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER (or TWILIO_MESSAGING_SERVICE_SID).",
           },
-          { status: 400 }
-        );
-      }
+        },
+        { status: 400 }
+      );
     }
 
     const nextRunAt =

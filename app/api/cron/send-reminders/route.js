@@ -4,8 +4,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../../lib/emailTemplate";
-import { sendSmsEvent } from "../../../../lib/klaviyo";
 import { formatDateTimeNy } from "../../../../lib/nyTime";
+import { isTwilioConfigured, sendTwilioSms } from "../../../../lib/twilioSms";
 import { sendTelegramMessage } from "../../../../lib/telegramNotify";
 
 export const runtime = "nodejs";
@@ -107,7 +107,7 @@ export async function GET(request) {
   const hasResend =
     Boolean(process.env.RESEND_API_KEY) &&
     Boolean(process.env.RESEND_FROM_EMAIL);
-  const hasKlaviyo = Boolean(process.env.KLAVIYO_API_KEY);
+  const hasTwilio = isTwilioConfigured();
   const appBaseUrl = process.env.APP_BASE_URL || "";
   const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -169,33 +169,16 @@ export async function GET(request) {
 
     if (reminder.phone) {
       try {
-        if (!hasKlaviyo) {
+        if (!hasTwilio) {
           await supabase.from("reminder_attempts").insert({
             reminder_id: reminder.id,
             channel: "sms",
             status: "skipped",
-            error_message: "Missing Klaviyo API key.",
+            error_message: "Missing Twilio configuration.",
           });
         } else {
           hasConfiguredChannel = true;
-          await sendSmsEvent({
-            apiKey: process.env.KLAVIYO_API_KEY,
-            phoneNumber: reminder.phone,
-            email: reminder.email,
-            externalId: reminder.client_id || reminder.user_id || reminder.id,
-            message: smsMessage,
-            reminderId: reminder.id,
-            frequencyLabel: getFrequencyLabel(reminder),
-            stopCondition:
-              reminder.stop_condition === "proof"
-                ? "Picture proof required"
-                : `Stop at ${formatDateTimeNy(reminder.stop_at)}`,
-            manageUrl: appBaseUrl || null,
-            uploadUrl,
-            nextRunAt: reminder.next_run_at,
-            nextRunAtLabel: formatDateTimeNy(reminder.next_run_at),
-            tone: annoyMeta?.tone ?? null,
-          });
+          await sendTwilioSms({ to: reminder.phone, body: smsMessage });
           await supabase.from("reminder_attempts").insert({
             reminder_id: reminder.id,
             channel: "sms",

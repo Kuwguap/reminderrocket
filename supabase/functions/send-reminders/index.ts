@@ -6,7 +6,14 @@ const SUPABASE_URL =
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL");
-const KLAVIYO_API_KEY = Deno.env.get("KLAVIYO_API_KEY");
+const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID")?.trim() ?? "";
+const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN")?.trim() ?? "";
+const TWILIO_FROM =
+  Deno.env.get("TWILIO_FROM_NUMBER")?.trim() ||
+  Deno.env.get("TWILIO_PHONE_NUMBER")?.trim() ||
+  "";
+const TWILIO_MESSAGING_SERVICE_SID =
+  Deno.env.get("TWILIO_MESSAGING_SERVICE_SID")?.trim() ?? "";
 const APP_BASE_URL = Deno.env.get("APP_BASE_URL") || "";
 
 const requiredEnv = [
@@ -16,7 +23,11 @@ const requiredEnv = [
 
 const hasResend =
   Boolean(RESEND_API_KEY) && Boolean(RESEND_FROM_EMAIL);
-const hasKlaviyo = Boolean(KLAVIYO_API_KEY);
+const hasTwilio = Boolean(
+  TWILIO_ACCOUNT_SID &&
+    TWILIO_AUTH_TOKEN &&
+    (TWILIO_MESSAGING_SERVICE_SID || TWILIO_FROM)
+);
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
 const supabase = createClient(SUPABASE_URL ?? "", SUPABASE_SERVICE_ROLE_KEY ?? "");
@@ -111,77 +122,59 @@ async function logAttempt(reminderId: string, channel: string, status: string, e
   });
 }
 
-async function sendKlaviyoSmsEvent(params: {
-  phoneNumber: string;
-  email?: string | null;
-  externalId?: string | null;
-  message: string;
-  reminderId: string;
-  frequencyLabel: string;
-  stopCondition: string;
-  manageUrl?: string | null;
-  uploadUrl?: string | null;
-  nextRunAt?: string | null;
-  nextRunAtLabel?: string | null;
-  tone?: string | null;
-}) {
-  const profileAttributes: Record<string, string> = {
-    phone_number: params.phoneNumber,
-  };
-  if (params.email) {
-    profileAttributes.email = params.email;
+function normalizeSmsDestination(phone: string): string | null {
+  const trimmed = phone.trim();
+  if (!trimmed) {
+    return null;
   }
-  if (params.externalId) {
-    profileAttributes.external_id = params.externalId;
+  if (trimmed.startsWith("+")) {
+    const digits = trimmed.slice(1).replace(/\D/g, "");
+    return digits ? `+${digits}` : null;
+  }
+  const digitsOnly = trimmed.replace(/\D/g, "");
+  if (digitsOnly.length === 10) {
+    return `+1${digitsOnly}`;
+  }
+  if (digitsOnly.length === 11 && digitsOnly.startsWith("1")) {
+    return `+${digitsOnly}`;
+  }
+  if (digitsOnly.length >= 8) {
+    return `+${digitsOnly}`;
+  }
+  return null;
+}
+
+async function sendTwilioSms(to: string, body: string) {
+  const toE164 = normalizeSmsDestination(to);
+  if (!toE164) {
+    throw new Error(
+      "Invalid phone number. Use E.164 (e.g. +15551234567 or US 10-digit)."
+    );
   }
 
-  const payload = {
-    data: {
-      type: "event",
-      attributes: {
-        properties: {
-          message: params.message,
-          reminder_id: params.reminderId,
-          frequency: params.frequencyLabel,
-          stop_condition: params.stopCondition,
-          manage_url: params.manageUrl ?? null,
-          upload_url: params.uploadUrl ?? null,
-          next_run_at: params.nextRunAt ?? null,
-          next_run_at_label: params.nextRunAtLabel ?? null,
-          tone: params.tone ?? null,
-        },
-        metric: {
-          data: {
-            type: "metric",
-            attributes: {
-              name: "Reminder Rocket SMS",
-            },
-          },
-        },
-        profile: {
-          data: {
-            type: "profile",
-            attributes: profileAttributes,
-          },
-        },
-      },
-    },
-  };
+  const params = new URLSearchParams();
+  params.set("To", toE164);
+  params.set("Body", body.slice(0, 1600));
+  if (TWILIO_MESSAGING_SERVICE_SID) {
+    params.set("MessagingServiceSid", TWILIO_MESSAGING_SERVICE_SID);
+  } else {
+    params.set("From", TWILIO_FROM);
+  }
 
-  const response = await fetch("https://a.klaviyo.com/api/events/", {
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+  const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
+  const response = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Klaviyo-API-Key ${KLAVIYO_API_KEY}`,
-      accept: "application/vnd.api+json",
-      "content-type": "application/vnd.api+json",
-      revision: "2026-01-15",
+      Authorization: `Basic ${auth}`,
+      "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: JSON.stringify(payload),
+    body: params,
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Klaviyo SMS event failed.");
+    throw new Error(errorText || `Twilio request failed (${response.status}).`);
   }
 }
 
@@ -402,32 +395,16 @@ serve(async () => {
 
     if (reminder.phone) {
       try {
-        if (!hasKlaviyo) {
+        if (!hasTwilio) {
           await logAttempt(
             reminder.id,
             "sms",
             "skipped",
-            "Missing Klaviyo API key."
+            "Missing Twilio configuration."
           );
         } else {
           hasConfiguredChannel = true;
-          await sendKlaviyoSmsEvent({
-            phoneNumber: reminder.phone,
-            email: reminder.email,
-            externalId: reminder.client_id || reminder.user_id || reminder.id,
-            message: smsMessage,
-            reminderId: reminder.id,
-            frequencyLabel: getFrequencyLabel(reminder),
-            stopCondition:
-              reminder.stop_condition === "proof"
-                ? "Picture proof required"
-                : `Stop at ${formatDateTime(reminder.stop_at)}`,
-            manageUrl: APP_BASE_URL || null,
-            uploadUrl,
-            nextRunAt: reminder.next_run_at,
-            nextRunAtLabel: formatDateTime(reminder.next_run_at),
-            tone: annoyMeta?.tone ?? null,
-          });
+          await sendTwilioSms(reminder.phone, smsMessage);
           await logAttempt(reminder.id, "sms", "sent");
           delivered = true;
         }

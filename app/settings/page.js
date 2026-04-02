@@ -219,7 +219,7 @@ export default function SettingsPage() {
               Integrations & health checks
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-            Verify your Supabase, Klaviyo, and Resend configuration.
+            Verify your Supabase, Twilio, and Resend configuration.
             </p>
           </div>
           <button
@@ -276,14 +276,14 @@ export default function SettingsPage() {
               <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-orange-200 px-4 py-3">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">
-                    Klaviyo SMS
+                    Twilio SMS
                   </p>
                   <p className="text-xs text-slate-500">
-                    API key (and optional list ID)
+                    Account SID + auth token + from number or messaging service
                   </p>
                 </div>
-                <span className={pillClass(health?.summary?.klaviyo)}>
-                  {health?.summary?.klaviyo ? "Ready" : "Missing env vars"}
+                <span className={pillClass(health?.summary?.twilio)}>
+                  {health?.summary?.twilio ? "Ready" : "Missing env vars"}
                 </span>
               </div>
             </div>
@@ -374,8 +374,7 @@ export default function SettingsPage() {
         <section className="mt-6 rounded-3xl border border-orange-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Self-test</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Send a test email and seed the Klaviyo metric (SMS requires a phone
-            number with consent).
+            Send a test email or a direct SMS via Twilio.
           </p>
 
           <form className="mt-4 grid gap-4" onSubmit={runTest}>

@@ -14,8 +14,12 @@ Required secrets:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
-- `KLAVIYO_API_KEY`
 - `APP_BASE_URL`
+
+For SMS, also set Twilio (same variables as the Next.js app):
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_FROM_NUMBER` or `TWILIO_PHONE_NUMBER` **or** `TWILIO_MESSAGING_SERVICE_SID`
 
 ## Schedule (Cron)
 - In the Supabase dashboard, create a scheduled trigger to call:

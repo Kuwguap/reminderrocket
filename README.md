@@ -10,7 +10,7 @@ https://reminderrocket.vercel.app
 
 ## ✨ Features
 
-* **Dual-Channel Alerts:** Integration with **Klaviyo** (SMS) and **Resend** (Email).
+* **Dual-Channel Alerts:** Integration with **Twilio** (SMS) and **Resend** (Email).
 * **Flexible Recipients:** Send reminders to yourself or "Someone Special."
 * **Smart Stop Conditions:** End reminders at a specific time or require **Picture Proof** to stop the notifications.
 * **Custom Frequency:** Set your own orbit—remind every hour, day, or custom interval.
@@ -21,7 +21,7 @@ https://reminderrocket.vercel.app
 * **Frontend:** Next.js / React
 * **Database & Auth:** [Supabase](https://supabase.com/)
 * **Email Service:** [Resend](https://resend.com/)
-* **SMS Service:** [Klaviyo](https://www.klaviyo.com/)
+* **SMS Service:** [Twilio](https://www.twilio.com/)
 * **Styling:** Tailwind CSS
 
 ## ⚙️ Environment Variables
@@ -34,8 +34,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 RESEND_API_KEY=your_resend_key
 RESEND_FROM_EMAIL=Reminder Rocket <noreply@reminderrocket.com>
-KLAVIYO_API_KEY=your_klaviyo_private_api_key
-KLAVIYO_LIST_ID=optional_single_opt_in_list_id
+TWILIO_ACCOUNT_SID=your_twilio_account_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_FROM_NUMBER=+15551234567
+# Or use a Messaging Service instead of a From number:
+# TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxx
 APP_BASE_URL=http://localhost:3000
 ```
 
@@ -47,18 +50,18 @@ APP_BASE_URL=http://localhost:3000
    ```
 2. Copy `.env.example` to `.env` and fill in values.
 3. Run the Supabase SQL in `supabase/schema.sql`.
-4. Deploy the Edge Function in `supabase/functions/send-reminders`.
+4. Deploy the Edge Function in `supabase/functions/send-reminders` (set the same Twilio secrets there if you use Supabase cron).
 5. Start the app:
    ```bash
    npm run dev
    ```
 
-## 📲 Klaviyo SMS Setup
+## 📲 Twilio SMS Setup
 
-Reminder Rocket sends SMS by creating a Klaviyo event named **Reminder Rocket SMS**.
-Create a Klaviyo flow that is triggered by this event and send an SMS using the
-event property `message` for the body. Klaviyo SMS must be enabled in your account,
-and any phone numbers must be consented to receive SMS.
+1. Create a [Twilio](https://www.twilio.com/) account and buy an SMS-capable phone number (or configure a [Messaging Service](https://www.twilio.com/docs/messaging/services)).
+2. Set `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` from the Twilio Console.
+3. Set either `TWILIO_FROM_NUMBER` / `TWILIO_PHONE_NUMBER` (E.164) **or** `TWILIO_MESSAGING_SERVICE_SID`.
+4. Reminder SMS are sent directly via the [Messages API](https://www.twilio.com/docs/sms/api/message-resource) when cron runs—no separate marketing flow.
 
 ## 🧩 Supabase Notes
 
