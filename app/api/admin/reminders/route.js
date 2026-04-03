@@ -81,6 +81,7 @@ export async function GET(request) {
         "message",
         "phone",
         "email",
+        "telegram_chat_id",
         "frequency_type",
         "frequency_value",
         "frequency_unit",

@@ -141,6 +141,32 @@ export default function SettingsPage() {
     return labels[reminder.frequency_type] ?? reminder.frequency_type;
   };
 
+  function notificationDestinations(reminder) {
+    const rows = [];
+    if (reminder.email && String(reminder.email).trim()) {
+      rows.push({
+        key: "email",
+        label: "Email",
+        value: String(reminder.email).trim(),
+      });
+    }
+    if (reminder.phone && String(reminder.phone).trim()) {
+      rows.push({
+        key: "sms",
+        label: "SMS",
+        value: String(reminder.phone).trim(),
+      });
+    }
+    if (reminder.telegram_chat_id != null && reminder.telegram_chat_id !== "") {
+      rows.push({
+        key: "telegram",
+        label: "Telegram (chat ID)",
+        value: String(reminder.telegram_chat_id),
+      });
+    }
+    return rows;
+  }
+
   async function handleAdminStop(reminderId) {
     setAdminActionError("");
     try {
@@ -297,7 +323,8 @@ export default function SettingsPage() {
                 Active reminders (admin)
               </h2>
               <p className="mt-1 text-sm text-slate-600">
-                View and stop running reminders across all users.
+                View and stop running reminders. Each card lists where alerts are
+                sent (email, phone, or Telegram chat ID).
               </p>
             </div>
             <button
@@ -323,7 +350,9 @@ export default function SettingsPage() {
             </p>
           ) : (
             <div className="mt-4 grid gap-3">
-              {adminReminders.map((reminder) => (
+              {adminReminders.map((reminder) => {
+                const destinations = notificationDestinations(reminder);
+                return (
                 <div
                   key={reminder.id}
                   className="rounded-2xl border border-orange-200 p-4"
@@ -336,20 +365,27 @@ export default function SettingsPage() {
                       <p className="text-xs text-slate-500">
                         Recipient: {reminder.recipient_name || "Unknown"}
                       </p>
-                      <p className="text-xs text-slate-500">
-                        Channel:{" "}
-                        {reminder.phone ? "SMS" : reminder.email ? "Email" : "—"}
-                      </p>
-                      {reminder.email ? (
-                        <p className="text-xs text-slate-500">
-                          Email: {reminder.email}
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs font-semibold text-slate-700">
+                          Notifications
                         </p>
-                      ) : null}
-                      {reminder.phone ? (
-                        <p className="text-xs text-slate-500">
-                          Phone: {reminder.phone}
-                        </p>
-                      ) : null}
+                        {destinations.length > 0 ? (
+                          <ul className="list-inside list-disc text-xs text-slate-600">
+                            {destinations.map((row) => (
+                              <li key={row.key}>
+                                <span className="font-medium text-slate-700">
+                                  {row.label}:
+                                </span>{" "}
+                                {row.value}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-amber-700">
+                            No email, phone, or Telegram chat on this reminder.
+                          </p>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-500">
                         Frequency: {formatFrequency(reminder)}
                       </p>
@@ -366,7 +402,8 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
