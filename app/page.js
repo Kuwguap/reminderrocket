@@ -17,10 +17,14 @@ import {
   msUntil,
   parseDatetimeLocalInAppZone,
 } from "../lib/nyTime";
+import { getNotificationDestinationRows } from "../lib/notificationDestinations";
 import { formatZodErrors, reminderSchema } from "../lib/validation";
 
 const modalDismissXClassName =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg leading-none text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500";
+
+/** Above header chrome; profile dropdown stays below this (see z-index on profile). */
+const MODAL_OVERLAY_Z = "z-[100]";
 
 const quotes = [
   "Mission focus beats motivation every time.",
@@ -179,6 +183,12 @@ export default function Home() {
       subscription?.unsubscribe();
     };
   }, [supabase, router]);
+
+  useEffect(() => {
+    if (showReminders || showSuccessModal || showAuth) {
+      setShowProfileMenu(false);
+    }
+  }, [showReminders, showSuccessModal, showAuth]);
 
   const loadReminders = useCallback(async () => {
     const seq = ++remindersFetchSeq.current;
@@ -689,7 +699,7 @@ export default function Home() {
                 Create a reminder
               </h2>
               {user ? (
-                <div className="relative z-40" ref={profileMenuRef}>
+                <div className="relative z-10" ref={profileMenuRef}>
                   <button
                     type="button"
                     onClick={() => setShowProfileMenu((open) => !open)}
@@ -707,7 +717,7 @@ export default function Home() {
                   {showProfileMenu ? (
                     <div
                       role="menu"
-                      className="absolute right-0 mt-2 w-60 rounded-2xl border border-orange-200 bg-white py-2 shadow-lg"
+                      className="absolute right-0 z-20 mt-2 w-60 rounded-2xl border border-orange-200 bg-white py-2 shadow-lg"
                     >
                       <p className="px-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                         Signed in as
@@ -1018,7 +1028,9 @@ export default function Home() {
         </section>
 
         {showSuccessModal ? (
-          <div className="fixed inset-0 z-[25] flex items-center justify-center bg-slate-950/45 px-4">
+          <div
+            className={`fixed inset-0 ${MODAL_OVERLAY_Z} flex items-center justify-center bg-slate-950/45 px-4`}
+          >
             <div className="relative w-full max-w-sm rounded-3xl border-2 border-orange-400 bg-white p-5 shadow-xl">
               <button
                 type="button"
@@ -1074,8 +1086,10 @@ export default function Home() {
         ) : null}
 
         {showReminders && (user || clientId) ? (
-          <div className="fixed inset-0 z-20 overflow-y-auto bg-slate-950/40 px-4 py-6">
-            <div className="mx-auto w-full max-w-xl rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
+          <div
+            className={`fixed inset-0 ${MODAL_OVERLAY_Z} overflow-y-auto bg-slate-950/40 px-4 py-6`}
+          >
+            <div className="relative z-[1] mx-auto w-full max-w-xl rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
               <div className="sticky top-0 z-10 -mx-4 -mt-4 rounded-t-3xl border-b border-orange-100 bg-white px-4 pb-3 pt-4">
                 <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-900">
@@ -1122,7 +1136,10 @@ export default function Home() {
                 </p>
               ) : (
                 <div className="mt-3 grid gap-3" data-sync={reminderTick}>
-                  {visibleReminders.map((reminder) => (
+                  {visibleReminders.map((reminder) => {
+                    const destinations =
+                      getNotificationDestinationRows(reminder);
+                    return (
                     <div
                       key={reminder.id}
                       className="rounded-2xl border border-orange-200 p-3"
@@ -1135,16 +1152,27 @@ export default function Home() {
                           <p className="text-xs text-slate-500">
                             Recipient: {reminder.recipient_name || "Recipient"}
                           </p>
-                          <p className="text-xs text-slate-500">
-                            Notify via:{" "}
-                            {[
-                              reminder.phone ? "SMS" : null,
-                              reminder.email ? "Email" : null,
-                              reminder.telegram_chat_id != null ? "Telegram" : null,
-                            ]
-                              .filter(Boolean)
-                              .join(", ") || "—"}
-                          </p>
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-slate-700">
+                              Notifications
+                            </p>
+                            {destinations.length > 0 ? (
+                              <ul className="list-inside list-disc text-xs text-slate-600">
+                                {destinations.map((row) => (
+                                  <li key={row.key}>
+                                    <span className="font-medium text-slate-700">
+                                      {row.label}:
+                                    </span>{" "}
+                                    {row.value}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-xs text-amber-700">
+                                No email, phone, or Telegram on this reminder.
+                              </p>
+                            )}
+                          </div>
                           <p className="text-xs text-slate-500">
                             Start time (ET):{" "}
                             {formatDateTimeNy(reminder.start_time)}
@@ -1231,7 +1259,8 @@ export default function Home() {
                         </div>
                       ) : null}
                     </div>
-                  ))}
+                    );
+                  })}
                   {hiddenReminderCount > 0 ? (
                     <p className="text-xs text-slate-500">
                       Showing latest {visibleReminders.length} of{" "}
@@ -1245,7 +1274,9 @@ export default function Home() {
         ) : null}
 
         {showAuth ? (
-          <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/40 px-4">
+          <div
+            className={`fixed inset-0 ${MODAL_OVERLAY_Z} flex items-center justify-center bg-slate-950/40 px-4`}
+          >
             <div className="w-full max-w-sm rounded-3xl border border-orange-200 bg-white p-4 shadow-xl">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-900">

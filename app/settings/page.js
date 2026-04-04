@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getNotificationDestinationRows } from "../../lib/notificationDestinations";
 import { formatDateTimeNy } from "../../lib/nyTime";
 
 export default function SettingsPage() {
@@ -140,32 +141,6 @@ export default function SettingsPage() {
     };
     return labels[reminder.frequency_type] ?? reminder.frequency_type;
   };
-
-  function notificationDestinations(reminder) {
-    const rows = [];
-    if (reminder.email && String(reminder.email).trim()) {
-      rows.push({
-        key: "email",
-        label: "Email",
-        value: String(reminder.email).trim(),
-      });
-    }
-    if (reminder.phone && String(reminder.phone).trim()) {
-      rows.push({
-        key: "sms",
-        label: "SMS",
-        value: String(reminder.phone).trim(),
-      });
-    }
-    if (reminder.telegram_chat_id != null && reminder.telegram_chat_id !== "") {
-      rows.push({
-        key: "telegram",
-        label: "Telegram (chat ID)",
-        value: String(reminder.telegram_chat_id),
-      });
-    }
-    return rows;
-  }
 
   async function handleAdminStop(reminderId) {
     setAdminActionError("");
@@ -351,7 +326,7 @@ export default function SettingsPage() {
           ) : (
             <div className="mt-4 grid gap-3">
               {adminReminders.map((reminder) => {
-                const destinations = notificationDestinations(reminder);
+                const destinations = getNotificationDestinationRows(reminder);
                 return (
                 <div
                   key={reminder.id}
