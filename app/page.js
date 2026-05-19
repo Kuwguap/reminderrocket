@@ -54,15 +54,10 @@ const frequencyOptions = [
   },
   {
     id: "custom",
-    label: "Custom",
-    shortLabel: "Custom",
+    label: "Choose my own",
+    shortLabel: "Choose my own",
     detail: "Pick your own interval.",
   },
-];
-
-const stopOptions = [
-  { value: "time", label: "End at a specific time" },
-  { value: "proof", label: "Require picture proof" },
 ];
 
 export default function Home() {
@@ -775,81 +770,20 @@ export default function Home() {
                 </label>
               </div>
 
-              <div className="grid gap-[2px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
+              <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
                 <p className="text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600">
                   Step 2  - Set Time 
                 </p>
-                <div className="text-[11px] font-medium text-slate-700">
-                  How often (tap one)
-                  <div
-                    className={`mt-1 flex flex-nowrap gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${annoyMode ? "pointer-events-none opacity-40" : ""}`}
-                  >
-                    {frequencyOptions.map((option) => {
-                      const isActive = frequency === option.id;
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => setFrequency(option.id)}
-                          aria-pressed={isActive}
-                          className={`shrink-0 rounded-full border px-2.5 py-1 text-center text-[10px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 sm:px-3 sm:text-[11px] ${
-                            isActive
-                              ? "border-orange-400 bg-orange-50 text-orange-500"
-                              : "border-orange-200 bg-white text-slate-700 hover:border-orange-300"
-                          }`}
-                        >
-                          {option.shortLabel ?? option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                {!annoyMode && frequency === "custom" ? (
-                  <div className="grid gap-[2px] sm:grid-cols-[1fr,120px]">
-                    <input
-                      type="number"
-                      min={5}
-                      step={5}
-                      placeholder="30"
-                      value={customFrequencyValue}
-                      onChange={(event) =>
-                        setCustomFrequencyValue(event.target.value)
-                      }
-                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
-                    <select
-                      value={customFrequencyUnit}
-                      onChange={(event) =>
-                        setCustomFrequencyUnit(event.target.value)
-                      }
-                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    >
-                      <option value="minutes">Minutes</option>
-                      <option value="hours">Hours</option>
-                      <option value="days">Days</option>
-                    </select>
-                  </div>
-                ) : null}
-                {renderError("frequency_value")}
 
-                <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-orange-200 bg-white px-[10px] py-[5px]">
-                  <input
-                    type="checkbox"
-                    checked={annoyMode}
-                    onChange={(event) => setAnnoyMode(event.target.checked)}
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-orange-300 text-orange-500 focus:ring-orange-500"
-                  />
-                  <span className="grid gap-1 text-[11px] text-slate-700">
-                    <span className="font-semibold text-slate-900">
-                      Annoy me until done
-                    </span>
-                  </span>
-                </label>
-
-                <div className="grid gap-[6px] rounded-2xl border border-orange-100 bg-white px-[10px] py-[10px] md:grid-cols-2">
-                  <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                    Start time (Eastern)
-                    <div className="flex flex-wrap items-center gap-2">
+                <div className="grid gap-[6px] rounded-2xl border border-orange-100 bg-white px-[10px] py-[10px]">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-orange-600">
+                    Start Rocket (NYC Time)
+                  </p>
+                  <div className="grid grid-cols-2 gap-[6px]">
+                    <div className="flex flex-col items-center gap-1 text-center">
+                      <span className="text-[9px] font-normal text-slate-400">
+                        (I remind you now)
+                      </span>
                       <button
                         type="button"
                         onClick={() => setStartTiming("now")}
@@ -857,8 +791,13 @@ export default function Home() {
                           startTiming === "now" ? "" : "opacity-70"
                         }`}
                       >
-                        Start now
+                        Start Now
                       </button>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 text-center">
+                      <span className="text-[9px] font-normal text-slate-400">
+                        (I remind you later)
+                      </span>
                       <button
                         type="button"
                         onClick={() => setStartTiming("schedule")}
@@ -866,50 +805,142 @@ export default function Home() {
                           startTiming === "schedule" ? "" : "opacity-70"
                         }`}
                       >
-                        Schedule
+                        Start Schedule
                       </button>
                     </div>
-                    {startTiming === "schedule" ? (
-                      <label className="grid gap-[3px] text-[11px] font-medium text-slate-600">
-                        Scheduled start (ET)
-                        <input
-                          type="datetime-local"
-                          value={scheduledAt}
-                          onChange={(event) => setScheduledAt(event.target.value)}
-                          className="w-full rounded-2xl border border-orange-200 px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                        />
-                        {renderError("start_time")}
-                      </label>
-                    ) : null}
                   </div>
+                  {startTiming === "schedule" ? (
+                    <label className="grid gap-[3px] text-[11px] font-medium text-slate-600">
+                      Scheduled start (ET)
+                      <input
+                        type="datetime-local"
+                        value={scheduledAt}
+                        onChange={(event) => setScheduledAt(event.target.value)}
+                        className="w-full rounded-2xl border border-orange-200 px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      {renderError("start_time")}
+                    </label>
+                  ) : null}
+                </div>
 
-                  <div className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                    Stop condition
-                    <select
-                      value={stopCondition}
-                      onChange={(event) => setStopCondition(event.target.value)}
-                      className="w-full rounded-2xl border border-orange-200 px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                <div className="grid gap-[6px] rounded-2xl border border-orange-100 bg-white px-[10px] py-[10px]">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-orange-600">
+                    Frequency
+                  </p>
+                  <div className="text-[11px] font-medium text-slate-700">
+                    When to remind you
+                    <div
+                      className={`mt-1 flex flex-nowrap gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${annoyMode ? "pointer-events-none opacity-40" : ""}`}
                     >
-                      {stopOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-
-                    {stopCondition === "time" ? (
-                      <label className="grid gap-[3px] text-[11px] font-medium text-slate-600">
-                        Stop time (Eastern)
-                        <input
-                          type="datetime-local"
-                          value={stopAt}
-                          onChange={(event) => setStopAt(event.target.value)}
-                          className="w-full rounded-2xl border border-orange-200 px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                        />
-                        {renderError("stop_at")}
-                      </label>
-                    ) : null}
+                      {frequencyOptions.map((option) => {
+                        const isActive = frequency === option.id;
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => setFrequency(option.id)}
+                            aria-pressed={isActive}
+                            className={`shrink-0 rounded-full border px-2.5 py-1 text-center text-[10px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 sm:px-3 sm:text-[11px] ${
+                              isActive
+                                ? "border-orange-400 bg-orange-50 text-orange-500"
+                                : "border-orange-200 bg-white text-slate-700 hover:border-orange-300"
+                            }`}
+                          >
+                            {option.shortLabel ?? option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
+                  {!annoyMode && frequency === "custom" ? (
+                    <div className="grid gap-[2px] sm:grid-cols-[1fr,120px]">
+                      <input
+                        type="number"
+                        min={5}
+                        step={5}
+                        placeholder="30"
+                        value={customFrequencyValue}
+                        onChange={(event) =>
+                          setCustomFrequencyValue(event.target.value)
+                        }
+                        className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      <select
+                        value={customFrequencyUnit}
+                        onChange={(event) =>
+                          setCustomFrequencyUnit(event.target.value)
+                        }
+                        className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      >
+                        <option value="minutes">Minutes</option>
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
+                      </select>
+                    </div>
+                  ) : null}
+                  {renderError("frequency_value")}
+
+                  <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-orange-200 bg-white px-[10px] py-[5px]">
+                    <input
+                      type="checkbox"
+                      checked={annoyMode}
+                      onChange={(event) => setAnnoyMode(event.target.checked)}
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-orange-300 text-orange-500 focus:ring-orange-500"
+                    />
+                    <span className="grid gap-1 text-[11px] text-slate-700">
+                      <span className="font-semibold text-slate-900">
+                        Annoy me until done
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                <div className="grid gap-[6px] rounded-2xl border border-orange-100 bg-white px-[10px] py-[10px]">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-orange-600">
+                    Stop Rocket
+                  </p>
+                  <div className="grid grid-cols-2 gap-[6px]">
+                    <div className="flex flex-col items-center gap-1 text-center">
+                      <span className="text-[9px] font-normal text-slate-400">
+                        (Show proof to stop Rocket)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setStopCondition("proof")}
+                        className={`${primaryButtonSmallClass} ${
+                          stopCondition === "proof" ? "" : "opacity-70"
+                        }`}
+                      >
+                        PROOF
+                      </button>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 text-center">
+                      <span className="text-[9px] font-normal text-slate-400">
+                        (Pick time to stop Rocket)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setStopCondition("time")}
+                        className={`${primaryButtonSmallClass} ${
+                          stopCondition === "time" ? "" : "opacity-70"
+                        }`}
+                      >
+                        TIME
+                      </button>
+                    </div>
+                  </div>
+                  {stopCondition === "time" ? (
+                    <label className="grid gap-[3px] text-[11px] font-medium text-slate-600">
+                      Stop time (Eastern)
+                      <input
+                        type="datetime-local"
+                        value={stopAt}
+                        onChange={(event) => setStopAt(event.target.value)}
+                        className="w-full rounded-2xl border border-orange-200 px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      {renderError("stop_at")}
+                    </label>
+                  ) : null}
                 </div>
               </div>
 
