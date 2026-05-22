@@ -98,6 +98,7 @@ export default function Home() {
   const [clientId, setClientId] = useState("");
   const [authReady, setAuthReady] = useState(false);
   const [reminderTick, setReminderTick] = useState(0);
+  const [reminderPage, setReminderPage] = useState(0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
 
@@ -275,6 +276,19 @@ export default function Home() {
   }, [showReminders]);
 
   useEffect(() => {
+    if (!showReminders) {
+      setReminderPage(0);
+    }
+  }, [showReminders]);
+
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(reminders.length / 4) - 1);
+    if (reminderPage > maxPage) {
+      setReminderPage(maxPage);
+    }
+  }, [reminders.length, reminderPage]);
+
+  useEffect(() => {
     if (!showProfileMenu) {
       return;
     }
@@ -314,6 +328,32 @@ export default function Home() {
     }
     setTelegramChatId((prev) => (prev.trim() === "" ? String(metaValue) : prev));
   }, [user?.id]);
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const stored = window.localStorage.getItem("rr_telegram_chat_id");
+    if (!stored) {
+      return;
+    }
+    setTelegramChatId((prev) => (prev.trim() === "" ? stored : prev));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const raw = telegramChatId.trim();
+    if (raw === "") {
+      return;
+    }
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+      return;
+    }
+    window.localStorage.setItem("rr_telegram_chat_id", String(parsed));
+  }, [telegramChatId]);
 
   useEffect(() => {
     if (!supabase || !user) {
@@ -440,7 +480,6 @@ export default function Home() {
       setScheduledAt("");
       setStopCondition("proof");
       setStopAt("");
-      setTelegramChatId("");
       await loadReminders();
       setShowSuccessModal(true);
     } catch (error) {
@@ -610,8 +649,21 @@ export default function Home() {
     return option?.label ?? reminder.frequency_type;
   };
 
-  const visibleReminders = reminders.slice(0, 4);
-  const hiddenReminderCount = Math.max(reminders.length - visibleReminders.length, 0);
+  const remindersPageSize = 4;
+  const totalReminderPages = Math.max(
+    1,
+    Math.ceil(reminders.length / remindersPageSize)
+  );
+  const safeReminderPage = Math.min(reminderPage, totalReminderPages - 1);
+  const remindersPageStart = safeReminderPage * remindersPageSize;
+  const visibleReminders = reminders.slice(
+    remindersPageStart,
+    remindersPageStart + remindersPageSize
+  );
+  const hiddenReminderCount = Math.max(
+    reminders.length - visibleReminders.length,
+    0
+  );
 
   return (
     <main className="min-h-screen bg-white">
@@ -1280,7 +1332,7 @@ export default function Home() {
                             htmlFor={`proof-file-${reminder.id}`}
                             className="inline-flex w-full cursor-pointer items-center justify-center rounded-2xl border-2 border-orange-400 bg-orange-50 px-4 py-3 text-center text-sm font-bold text-orange-700 shadow-sm transition hover:border-orange-500 hover:bg-orange-100"
                           >
-                            Choose photo
+                            Upload Photo
                           </label>
                           {uploadingId === reminder.id ? (
                             <p className="text-xs text-slate-500">
@@ -1292,11 +1344,37 @@ export default function Home() {
                     </div>
                     );
                   })}
-                  {hiddenReminderCount > 0 ? (
-                    <p className="text-xs text-slate-500">
-                      Showing latest {visibleReminders.length} of{" "}
-                      {reminders.length} reminders.
-                    </p>
+                  {reminders.length > remindersPageSize ? (
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setReminderPage((page) => Math.max(0, page - 1))
+                        }
+                        disabled={safeReminderPage === 0}
+                        className="rounded-full border border-orange-300 px-3 py-1 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Prev
+                      </button>
+                      <p className="text-xs text-slate-500">
+                        Showing {remindersPageStart + 1}–
+                        {remindersPageStart + visibleReminders.length} of{" "}
+                        {reminders.length} · Page {safeReminderPage + 1}/
+                        {totalReminderPages}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setReminderPage((page) =>
+                            Math.min(totalReminderPages - 1, page + 1)
+                          )
+                        }
+                        disabled={safeReminderPage >= totalReminderPages - 1}
+                        className="rounded-full border border-orange-300 px-3 py-1 text-xs font-semibold text-orange-500 transition hover:border-orange-400 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Next
+                      </button>
+                    </div>
                   ) : null}
                 </div>
               )}

@@ -12,7 +12,10 @@ import {
 } from "../../../../lib/nyTime";
 import { pickTwoRandomQuotes } from "../../../../lib/reminderQuotes";
 import { isVonageConfigured, sendVonageSms } from "../../../../lib/vonageSms";
-import { sendTelegramMessage } from "../../../../lib/telegramNotify";
+import {
+  escapeTelegramHtml,
+  sendTelegramMessage,
+} from "../../../../lib/telegramNotify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -82,6 +85,12 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs, uploadUrl }) 
   const nextLaunchShort = formatTimeShortNy(
     new Date(now.getTime() + intervalMs).toISOString()
   );
+  const escapedMessage = escapeTelegramHtml(reminder.message ?? "");
+  const escapedUploadUrl = uploadUrl ? escapeTelegramHtml(uploadUrl) : null;
+  const uploadLink = (label) =>
+    escapedUploadUrl
+      ? `<a href="${escapedUploadUrl}">${label}</a>`
+      : label;
 
   if (reminder.stop_condition === "time") {
     const countdownMs = msUntil(reminder.stop_at);
@@ -90,7 +99,7 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs, uploadUrl }) 
       "    ⏱️TIME IS TICKING",
       "",
       "📋 Mission Reminder:",
-      reminder.message,
+      escapedMessage,
       "",
       "⏳ Countdown Remaining:",
       formatHmsCountdown(countdownMs),
@@ -102,9 +111,9 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs, uploadUrl }) 
       "👇 QUICK ACTION 👇",
     ];
     if (uploadUrl) {
-      parts.push(TELEGRAM_DIVIDER, "📸 UPLOAD PROOF", TELEGRAM_DIVIDER);
+      parts.push(TELEGRAM_DIVIDER, uploadLink("📸 UPLOAD PROOF"), TELEGRAM_DIVIDER);
     }
-    parts.push("", quote1, quote2);
+    parts.push("", escapeTelegramHtml(quote1), escapeTelegramHtml(quote2));
 
     const replyMarkup = uploadUrl
       ? {
@@ -112,7 +121,7 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs, uploadUrl }) 
         }
       : undefined;
 
-    return { body: parts.join("\n"), replyMarkup };
+    return { body: parts.join("\n"), replyMarkup, parseMode: "HTML" };
   }
 
   const proofParts = [
@@ -120,7 +129,7 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs, uploadUrl }) 
     "      🧾UPLOAD RECEIPT",
     "",
     "📋 Mission Reminder:",
-    reminder.message,
+    escapedMessage,
     "",
     "⏰ Next Launch:",
     nextLaunchShort,
@@ -130,9 +139,13 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs, uploadUrl }) 
     "👇Complete this mission now🧾",
   ];
   if (uploadUrl) {
-    proofParts.push(TELEGRAM_DIVIDER, "📸 UPLOAD PHOTO", TELEGRAM_DIVIDER);
+    proofParts.push(
+      TELEGRAM_DIVIDER,
+      uploadLink("📸 UPLOAD PHOTO"),
+      TELEGRAM_DIVIDER
+    );
   }
-  proofParts.push("", quote1, quote2);
+  proofParts.push("", escapeTelegramHtml(quote1), escapeTelegramHtml(quote2));
 
   const replyMarkup = uploadUrl
     ? {
@@ -140,7 +153,7 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs, uploadUrl }) 
       }
     : undefined;
 
-  return { body: proofParts.join("\n"), replyMarkup };
+  return { body: proofParts.join("\n"), replyMarkup, parseMode: "HTML" };
 }
 
 async function getAnnoyMeta(reminderId, channel, supabase) {
@@ -343,16 +356,18 @@ export async function GET(request) {
           });
         } else {
           hasConfiguredChannel = true;
-          const { body: tgBody, replyMarkup } = buildTelegramReminderMessage(
-            reminder,
-            { now, intervalMs, uploadUrl }
-          );
+          const { body: tgBody, replyMarkup, parseMode } =
+            buildTelegramReminderMessage(reminder, {
+              now,
+              intervalMs,
+              uploadUrl,
+            });
 
           const tgResult = await sendTelegramMessage(
             telegramBotToken,
             Number(reminder.telegram_chat_id),
             tgBody,
-            { replyMarkup }
+            { replyMarkup, parseMode }
           );
           if (!tgResult.ok) {
             await supabase.from("reminder_attempts").insert({
