@@ -264,26 +264,47 @@ export async function GET(request) {
           });
         } else {
           hasConfiguredChannel = true;
-          const tgBody = [
-            "🔔 Reminder Rocket",
-            "",
-            smsMessage,
-            "",
-            `Next run (ET): ${formatDateTimeNy(reminder.next_run_at)}`,
+          const nextLaunchEt = formatDateTimeNy(
+            new Date(now.getTime() + intervalMs).toISOString()
+          );
+          const stopLine =
             reminder.stop_condition === "proof"
-              ? `\nStop: picture proof required${
-                  uploadUrl ? `\n${uploadUrl}` : ""
-                }`
+              ? "🛑🤚Stop Rocket: picture proof required"
               : reminder.stop_at
-                ? `\nStop (ET): ${formatDateTimeNy(reminder.stop_at)}`
-                : "",
-          ]
-            .filter(Boolean)
-            .join("\n");
+                ? `🛑🤚Stop Rocket: ${formatDateTimeNy(reminder.stop_at)}`
+                : "🛑🤚Stop Rocket: —";
+
+          const tgBodyParts = [
+            "🚀Reminder Rocket",
+            "Do it now ! Push Push Push ! PUSH NOW!",
+            "",
+            reminder.message,
+            "",
+            "🥳LETS 🎊🎉GOOOOOOOO !!!!!!!!!!!!!!!!",
+            "",
+            `Next🚀Launch: ${nextLaunchEt}`,
+            "✅Complete The Mission",
+            stopLine,
+          ];
+          if (reminder.stop_condition === "proof" && uploadUrl) {
+            tgBodyParts.push(uploadUrl);
+          }
+          const tgBody = tgBodyParts.join("\n");
+
+          const replyMarkup =
+            reminder.stop_condition === "proof" && uploadUrl
+              ? {
+                  inline_keyboard: [
+                    [{ text: "📸 Upload Picture Proof", url: uploadUrl }],
+                  ],
+                }
+              : undefined;
+
           const tgResult = await sendTelegramMessage(
             telegramBotToken,
             Number(reminder.telegram_chat_id),
-            tgBody
+            tgBody,
+            { replyMarkup }
           );
           if (!tgResult.ok) {
             await supabase.from("reminder_attempts").insert({

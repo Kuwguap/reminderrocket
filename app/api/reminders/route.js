@@ -243,8 +243,9 @@ export async function POST(request) {
       );
     }
 
-    const nextRunAt =
-      startTime <= now ? new Date(now.getTime() + intervalMs) : startTime;
+    // When start_time is now (or earlier), fire on the next cron tick instead of waiting a full interval.
+    // Scheduled future starts continue to wait until that exact time.
+    const nextRunAt = startTime <= now ? now : startTime;
 
     const insertPayload = {
       message: data.message,
