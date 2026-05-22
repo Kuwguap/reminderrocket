@@ -4,7 +4,13 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../../lib/emailTemplate";
-import { formatDateTimeNy } from "../../../../lib/nyTime";
+import {
+  formatDateTimeNy,
+  formatHmsCountdown,
+  formatTimeShortNy,
+  msUntil,
+} from "../../../../lib/nyTime";
+import { pickTwoRandomQuotes } from "../../../../lib/reminderQuotes";
 import { isVonageConfigured, sendVonageSms } from "../../../../lib/vonageSms";
 import { sendTelegramMessage } from "../../../../lib/telegramNotify";
 
@@ -62,6 +68,79 @@ function buildUploadUrl(reminder, appBaseUrl) {
     url.searchParams.set("client_id", reminder.client_id);
   }
   return url.toString();
+}
+
+const TELEGRAM_DIVIDER = "━━━━━━━━━━━━━━━";
+
+/**
+ * @param {object} reminder
+ * @param {{ now: Date, intervalMs: number, uploadUrl: string | null }} ctx
+ * @returns {{ body: string, replyMarkup: object | undefined }}
+ */
+function buildTelegramReminderMessage(reminder, { now, intervalMs, uploadUrl }) {
+  const [quote1, quote2] = pickTwoRandomQuotes();
+  const nextLaunchShort = formatTimeShortNy(
+    new Date(now.getTime() + intervalMs).toISOString()
+  );
+
+  if (reminder.stop_condition === "time") {
+    const countdownMs = msUntil(reminder.stop_at);
+    const parts = [
+      "🤖Reminder💭Rocket🚀",
+      "    ⏱️TIME IS TICKING",
+      "",
+      "📋 Mission Reminder:",
+      reminder.message,
+      "",
+      "⏳ Countdown Remaining:",
+      formatHmsCountdown(countdownMs),
+      "",
+      "⏰ Next Launch:",
+      nextLaunchShort,
+      "",
+      "⚡ Complete before timer expires",
+      "👇 QUICK ACTION 👇",
+    ];
+    if (uploadUrl) {
+      parts.push(TELEGRAM_DIVIDER, "📸 UPLOAD PROOF", TELEGRAM_DIVIDER);
+    }
+    parts.push("", quote1, quote2);
+
+    const replyMarkup = uploadUrl
+      ? {
+          inline_keyboard: [[{ text: "📸 UPLOAD PROOF", url: uploadUrl }]],
+        }
+      : undefined;
+
+    return { body: parts.join("\n"), replyMarkup };
+  }
+
+  const proofParts = [
+    "🤖Reminder💭Rocket🚀",
+    "      🧾UPLOAD RECEIPT",
+    "",
+    "📋 Mission Reminder:",
+    reminder.message,
+    "",
+    "⏰ Next Launch:",
+    nextLaunchShort,
+    "",
+    "✅ To complete this mission:",
+    "Upload picture proof 📸 ",
+    "👇Complete this mission now🧾",
+  ];
+  if (uploadUrl) {
+    proofParts.push(TELEGRAM_DIVIDER, "📸 UPLOAD PHOTO", TELEGRAM_DIVIDER);
+  }
+  proofParts.push("", quote1, quote2);
+
+  const replyMarkup = uploadUrl
+    ? {
+        inline_keyboard: [[{ text: "📸 UPLOAD PHOTO", url: uploadUrl }]],
+      }
+    : undefined;
+
+  return { body: proofParts.join("\n"), replyMarkup };
 }
 
 async function getAnnoyMeta(reminderId, channel, supabase) {
@@ -264,41 +343,10 @@ export async function GET(request) {
           });
         } else {
           hasConfiguredChannel = true;
-          const nextLaunchEt = formatDateTimeNy(
-            new Date(now.getTime() + intervalMs).toISOString()
+          const { body: tgBody, replyMarkup } = buildTelegramReminderMessage(
+            reminder,
+            { now, intervalMs, uploadUrl }
           );
-          const stopLine =
-            reminder.stop_condition === "proof"
-              ? "🛑🤚Stop Rocket: picture proof required"
-              : reminder.stop_at
-                ? `🛑🤚Stop Rocket: ${formatDateTimeNy(reminder.stop_at)}`
-                : "🛑🤚Stop Rocket: —";
-
-          const tgBodyParts = [
-            "🚀Reminder Rocket",
-            "Do it now ! Push Push Push ! PUSH NOW!",
-            "",
-            reminder.message,
-            "",
-            "🥳LETS 🎊🎉GOOOOOOOO !!!!!!!!!!!!!!!!",
-            "",
-            `Next🚀Launch: ${nextLaunchEt}`,
-            "✅Complete The Mission",
-            stopLine,
-          ];
-          if (reminder.stop_condition === "proof" && uploadUrl) {
-            tgBodyParts.push(uploadUrl);
-          }
-          const tgBody = tgBodyParts.join("\n");
-
-          const replyMarkup =
-            reminder.stop_condition === "proof" && uploadUrl
-              ? {
-                  inline_keyboard: [
-                    [{ text: "📸 Upload Picture Proof", url: uploadUrl }],
-                  ],
-                }
-              : undefined;
 
           const tgResult = await sendTelegramMessage(
             telegramBotToken,
