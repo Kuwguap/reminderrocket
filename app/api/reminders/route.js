@@ -18,7 +18,7 @@ const FREQUENCY_INTERVALS_MS = {
 function getIntervalMs(frequencyType, frequencyValue, frequencyUnit) {
   if (frequencyType !== "custom") {
     if (frequencyType === "annoy") {
-      return 5 * 60 * 1000;
+      return 15 * 60 * 1000;
     }
     return FREQUENCY_INTERVALS_MS[frequencyType];
   }

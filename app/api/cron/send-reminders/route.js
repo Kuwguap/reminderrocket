@@ -12,10 +12,7 @@ import {
 } from "../../../../lib/nyTime";
 import { pickTwoRandomQuotes } from "../../../../lib/reminderQuotes";
 import { getSmsProvider } from "../../../../lib/smsProvider";
-import {
-  escapeTelegramHtml,
-  sendTelegramMessage,
-} from "../../../../lib/telegramNotify";
+import { sendTelegramMessage } from "../../../../lib/telegramNotify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +26,7 @@ function getIntervalMs(reminder) {
     case "daily":
       return 24 * 60 * 60 * 1000;
     case "annoy":
-      return 5 * 60 * 1000;
+      return 15 * 60 * 1000;
     case "custom": {
       const value = reminder.frequency_value ?? 0;
       const unit = reminder.frequency_unit ?? "minutes";
@@ -80,17 +77,11 @@ const TELEGRAM_DIVIDER = "━━━━━━━━━━━━━━━";
  * @param {{ now: Date, intervalMs: number, uploadUrl: string | null }} ctx
  * @returns {{ body: string, replyMarkup: object | undefined }}
  */
-function buildTelegramReminderMessage(reminder, { now, intervalMs, uploadUrl }) {
+function buildTelegramReminderMessage(reminder, { now, intervalMs }) {
   const [quote1, quote2] = pickTwoRandomQuotes();
   const nextLaunchShort = formatTimeShortNy(
     new Date(now.getTime() + intervalMs).toISOString()
   );
-  const escapedMessage = escapeTelegramHtml(reminder.message ?? "");
-  const escapedUploadUrl = uploadUrl ? escapeTelegramHtml(uploadUrl) : null;
-  const uploadLink = (label) =>
-    escapedUploadUrl
-      ? `<a href="${escapedUploadUrl}">${label}</a>`
-      : label;
 
   if (reminder.stop_condition === "time") {
     const countdownMs = msUntil(reminder.stop_at);
@@ -99,7 +90,7 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs, uploadUrl }) 
       "    ⏱️TIME IS TICKING",
       "",
       "📋 Mission Reminder:",
-      escapedMessage,
+      reminder.message ?? "",
       "",
       "⏳ Countdown Remaining:",
       formatHmsCountdown(countdownMs),
@@ -108,20 +99,11 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs, uploadUrl }) 
       nextLaunchShort,
       "",
       "⚡ Complete before timer expires",
-      "👇 QUICK ACTION 👇",
+      "",
+      quote1,
+      quote2,
     ];
-    if (uploadUrl) {
-      parts.push(TELEGRAM_DIVIDER, uploadLink("📸 UPLOAD PROOF"), TELEGRAM_DIVIDER);
-    }
-    parts.push("", escapeTelegramHtml(quote1), escapeTelegramHtml(quote2));
-
-    const replyMarkup = uploadUrl
-      ? {
-          inline_keyboard: [[{ text: "📸 UPLOAD PROOF", url: uploadUrl }]],
-        }
-      : undefined;
-
-    return { body: parts.join("\n"), replyMarkup, parseMode: "HTML" };
+    return { body: parts.join("\n") };
   }
 
   const proofParts = [
@@ -129,31 +111,20 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs, uploadUrl }) 
     "      🧾UPLOAD RECEIPT",
     "",
     "📋 Mission Reminder:",
-    escapedMessage,
+    reminder.message ?? "",
     "",
     "⏰ Next Launch:",
     nextLaunchShort,
     "",
     "✅ To complete this mission:",
-    "Upload picture proof 📸 ",
-    "👇Complete this mission now🧾",
+    "📸 Send a photo here in this chat — I'll mark it done.",
+    "",
+    TELEGRAM_DIVIDER,
+    "",
+    quote1,
+    quote2,
   ];
-  if (uploadUrl) {
-    proofParts.push(
-      TELEGRAM_DIVIDER,
-      uploadLink("📸 UPLOAD PHOTO"),
-      TELEGRAM_DIVIDER
-    );
-  }
-  proofParts.push("", escapeTelegramHtml(quote1), escapeTelegramHtml(quote2));
-
-  const replyMarkup = uploadUrl
-    ? {
-        inline_keyboard: [[{ text: "📸 UPLOAD PHOTO", url: uploadUrl }]],
-      }
-    : undefined;
-
-  return { body: proofParts.join("\n"), replyMarkup, parseMode: "HTML" };
+  return { body: proofParts.join("\n") };
 }
 
 async function getAnnoyMeta(reminderId, channel, supabase) {
@@ -171,12 +142,8 @@ async function getAnnoyMeta(reminderId, channel, supabase) {
       : attemptCount === 1
       ? "You're ignoring this."
       : "Last warning.";
-  const intervalMs =
-    attemptCount === 0
-      ? 5 * 60 * 1000
-      : attemptCount === 1
-      ? 15 * 60 * 1000
-      : 60 * 60 * 1000;
+  // Flat 15 minutes between annoy pings → 4 reminders / hour.
+  const intervalMs = 15 * 60 * 1000;
 
   return { tone, intervalMs, attemptCount };
 }
@@ -357,18 +324,15 @@ export async function GET(request) {
           });
         } else {
           hasConfiguredChannel = true;
-          const { body: tgBody, replyMarkup, parseMode } =
-            buildTelegramReminderMessage(reminder, {
-              now,
-              intervalMs,
-              uploadUrl,
-            });
+          const { body: tgBody } = buildTelegramReminderMessage(reminder, {
+            now,
+            intervalMs,
+          });
 
           const tgResult = await sendTelegramMessage(
             telegramBotToken,
             Number(reminder.telegram_chat_id),
-            tgBody,
-            { replyMarkup, parseMode }
+            tgBody
           );
           if (!tgResult.ok) {
             await supabase.from("reminder_attempts").insert({
