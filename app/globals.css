@@ -13,7 +13,16 @@ body {
 }
 
 /* ─────────────────────────  Theme: Aurora (default)  ───────────────────────── */
-/* No overrides needed — aurora maps to the existing orange/slate look.        */
+/* Light, airy wallpaper — soft cream paper with two warm halos and a faint
+   diagonal weave. Applied to body so it's visible behind every page.          */
+body {
+  background-color: #ffffff;
+  background-image:
+    radial-gradient(ellipse 70% 45% at 0% 0%, rgba(249, 115, 22, 0.16), transparent 60%),
+    radial-gradient(ellipse 70% 45% at 100% 100%, rgba(251, 146, 60, 0.18), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(249, 115, 22, 0.04) 0 1px, transparent 1px 14px),
+    repeating-linear-gradient(-45deg, rgba(15, 23, 42, 0.025) 0 1px, transparent 1px 14px);
+}
 
 /* ─────────────────────────  Theme: Midnight (dark)  ────────────────────────── */
 :root[data-theme="midnight"] {
@@ -23,8 +32,18 @@ body {
 [data-theme="midnight"] body {
   background-color: #020617;
   background-image:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(56, 189, 248, 0.18), transparent 70%),
-    radial-gradient(ellipse 60% 50% at 90% 110%, rgba(167, 139, 250, 0.18), transparent 70%),
+    /* drifting starfield */
+    radial-gradient(1px 1px at 14% 22%, rgba(226, 232, 240, 0.85), transparent 60%),
+    radial-gradient(1px 1px at 78% 11%, rgba(226, 232, 240, 0.7), transparent 60%),
+    radial-gradient(1px 1px at 42% 67%, rgba(226, 232, 240, 0.6), transparent 60%),
+    radial-gradient(1px 1px at 91% 53%, rgba(226, 232, 240, 0.7), transparent 60%),
+    radial-gradient(1px 1px at 33% 38%, rgba(226, 232, 240, 0.5), transparent 60%),
+    radial-gradient(1.5px 1.5px at 7% 86%, rgba(167, 139, 250, 0.9), transparent 60%),
+    radial-gradient(1.5px 1.5px at 65% 84%, rgba(56, 189, 248, 0.9), transparent 60%),
+    /* nebula halos */
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(56, 189, 248, 0.22), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 90% 110%, rgba(167, 139, 250, 0.22), transparent 70%),
+    /* grid mesh */
     repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.06) 0 1px, transparent 1px 60px),
     repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.06) 0 1px, transparent 1px 60px);
   color: rgb(226 232 240);
@@ -91,9 +110,15 @@ body {
 [data-theme="sunset"] body {
   background-color: #fff8f1;
   background-image:
-    radial-gradient(ellipse 90% 60% at 0% 0%, rgba(236, 72, 153, 0.22), transparent 70%),
-    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(245, 158, 11, 0.28), transparent 70%),
-    repeating-linear-gradient(135deg, rgba(236, 72, 153, 0.05) 0 6px, transparent 6px 18px);
+    /* sun halo top-left */
+    radial-gradient(ellipse 90% 60% at 0% 0%, rgba(236, 72, 153, 0.28), transparent 70%),
+    /* amber glow bottom-right */
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(245, 158, 11, 0.32), transparent 70%),
+    /* sky band across the middle */
+    linear-gradient(180deg, transparent 0%, transparent 35%, rgba(251, 191, 36, 0.12) 50%, transparent 65%),
+    /* diagonal fabric weave */
+    repeating-linear-gradient(135deg, rgba(236, 72, 153, 0.07) 0 2px, transparent 2px 14px),
+    repeating-linear-gradient(45deg, rgba(245, 158, 11, 0.06) 0 2px, transparent 2px 14px);
   color: rgb(67 17 67);
 }
 
@@ -147,12 +172,20 @@ body {
 [data-theme="oceanic"] body {
   background-color: #ecfeff;
   background-image:
-    radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.22), transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(251, 113, 133, 0.22), transparent 50%),
-    radial-gradient(circle at 30% 80%, rgba(56, 189, 248, 0.18), transparent 60%),
-    radial-gradient(rgba(16, 185, 129, 0.18) 1.5px, transparent 1.5px);
-  background-size: auto, auto, auto, 28px 28px;
-  background-position: 0 0, 0 0, 0 0, 0 0;
+    /* coral bloom */
+    radial-gradient(circle at 80% 80%, rgba(251, 113, 133, 0.28), transparent 50%),
+    /* emerald lagoon */
+    radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.28), transparent 50%),
+    /* sky tint */
+    radial-gradient(circle at 30% 80%, rgba(56, 189, 248, 0.22), transparent 60%),
+    /* wave bands */
+    repeating-linear-gradient(180deg, transparent 0 60px, rgba(16, 185, 129, 0.05) 60px 62px,
+      transparent 62px 110px, rgba(56, 189, 248, 0.05) 110px 112px),
+    /* dot grid */
+    radial-gradient(rgba(16, 185, 129, 0.22) 1.6px, transparent 1.6px),
+    radial-gradient(rgba(251, 113, 133, 0.18) 1.2px, transparent 1.2px);
+  background-size: auto, auto, auto, auto, 28px 28px, 56px 56px;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 14px 14px;
   color: rgb(15 42 53);
 }
 
@@ -202,6 +235,129 @@ body {
   backdrop-filter: blur(4px);
 }
 
+/* ─────────────────────────  Theme: Retro Arcade (bold/dark)  ───────────────── */
+:root[data-theme="arcade"] {
+  color-scheme: dark;
+}
+
+@keyframes rr-arcade-scan {
+  from { background-position: 0 0; }
+  to   { background-position: 0 4px; }
+}
+
+[data-theme="arcade"] body {
+  background-color: #0d001a;
+  background-image:
+    /* CRT scanlines (animated drift) */
+    repeating-linear-gradient(180deg,
+      rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px),
+    /* big pixel checker so the whole page reads "8-bit grid" */
+    linear-gradient(45deg, rgba(255, 0, 110, 0.05) 25%, transparent 25%, transparent 75%, rgba(255, 0, 110, 0.05) 75%),
+    linear-gradient(45deg, rgba(0, 245, 255, 0.05) 25%, transparent 25%, transparent 75%, rgba(0, 245, 255, 0.05) 75%),
+    /* twin neon glows */
+    radial-gradient(ellipse 70% 50% at 18% 12%, rgba(255, 0, 110, 0.3), transparent 60%),
+    radial-gradient(ellipse 70% 50% at 82% 88%, rgba(0, 245, 255, 0.3), transparent 60%),
+    /* gold sparkle */
+    radial-gradient(circle at 50% 50%, rgba(255, 214, 10, 0.08), transparent 60%),
+    /* deep purple base */
+    linear-gradient(180deg, #1a0033 0%, #0d001a 100%);
+  background-size:
+    auto,
+    32px 32px,
+    32px 32px,
+    auto,
+    auto,
+    auto,
+    auto;
+  background-position:
+    0 0,
+    0 0,
+    16px 16px,
+    0 0,
+    0 0,
+    0 0,
+    0 0;
+  animation: rr-arcade-scan 1.6s linear infinite;
+  color: #f8f0ff;
+}
+
+[data-theme="arcade"] .bg-white {
+  background-color: rgba(26, 0, 51, 0.78) !important;
+  backdrop-filter: blur(4px);
+  border-color: rgba(255, 0, 110, 0.4);
+}
+[data-theme="arcade"] .bg-orange-50,
+[data-theme="arcade"] .bg-orange-50\/40,
+[data-theme="arcade"] .bg-orange-50\/60 { background-color: rgba(0, 245, 255, 0.06) !important; }
+[data-theme="arcade"] .bg-orange-100 { background-color: rgba(255, 0, 110, 0.16) !important; }
+[data-theme="arcade"] .bg-emerald-50 { background-color: rgba(0, 245, 255, 0.1) !important; }
+[data-theme="arcade"] .bg-emerald-200 { background-color: rgba(0, 245, 255, 0.3) !important; }
+
+[data-theme="arcade"] .text-slate-900,
+[data-theme="arcade"] .text-slate-800 { color: #f8f0ff !important; text-shadow: 0 0 8px rgba(255, 0, 110, 0.35); }
+[data-theme="arcade"] .text-slate-700 { color: #e9d5ff !important; }
+[data-theme="arcade"] .text-slate-600 { color: #c4b5fd !important; }
+[data-theme="arcade"] .text-slate-500,
+[data-theme="arcade"] .text-slate-400 { color: #a78bfa !important; }
+[data-theme="arcade"] .text-emerald-800,
+[data-theme="arcade"] .text-emerald-900 { color: #00f5ff !important; }
+
+[data-theme="arcade"] .text-orange-500,
+[data-theme="arcade"] .text-orange-600,
+[data-theme="arcade"] .text-orange-700,
+[data-theme="arcade"] .text-orange-800,
+[data-theme="arcade"] .text-orange-900 {
+  color: #ff006e !important;
+  text-shadow: 0 0 6px rgba(255, 0, 110, 0.6);
+}
+
+[data-theme="arcade"] .bg-orange-500 {
+  background-image: linear-gradient(90deg, #ff006e 0%, #ffd60a 50%, #00f5ff 100%) !important;
+  background-color: #ff006e !important;
+  color: #0d001a !important;
+  text-shadow: none !important;
+  box-shadow: 0 0 14px rgba(255, 0, 110, 0.6), inset 0 0 0 2px rgba(255, 255, 255, 0.18);
+}
+[data-theme="arcade"] .bg-orange-600 {
+  background-color: #c1004f !important;
+  color: #fff !important;
+}
+[data-theme="arcade"] .hover\:bg-orange-600:hover {
+  background-image: linear-gradient(90deg, #c1004f 0%, #ffb800 50%, #00d4dc 100%) !important;
+  box-shadow: 0 0 22px rgba(0, 245, 255, 0.55), inset 0 0 0 2px rgba(255, 255, 255, 0.24);
+}
+[data-theme="arcade"] .hover\:bg-orange-100:hover { background-color: rgba(255, 0, 110, 0.2) !important; }
+[data-theme="arcade"] .hover\:bg-orange-50:hover { background-color: rgba(0, 245, 255, 0.1) !important; }
+
+[data-theme="arcade"] .border-orange-100,
+[data-theme="arcade"] .border-orange-200 { border-color: rgba(255, 0, 110, 0.35) !important; }
+[data-theme="arcade"] .border-orange-300 { border-color: rgba(255, 0, 110, 0.55) !important; }
+[data-theme="arcade"] .border-orange-400,
+[data-theme="arcade"] .border-orange-500 { border-color: #ff006e !important; box-shadow: 0 0 8px rgba(255, 0, 110, 0.35); }
+[data-theme="arcade"] .border-emerald-300,
+[data-theme="arcade"] .border-emerald-400 { border-color: #00f5ff !important; }
+[data-theme="arcade"] .hover\:border-orange-300:hover,
+[data-theme="arcade"] .hover\:border-orange-400:hover,
+[data-theme="arcade"] .hover\:border-orange-500:hover { border-color: #00f5ff !important; }
+[data-theme="arcade"] .focus\:border-orange-500:focus { border-color: #00f5ff !important; }
+[data-theme="arcade"] .focus\:ring-orange-500:focus { --tw-ring-color: #00f5ff !important; }
+
+[data-theme="arcade"] input,
+[data-theme="arcade"] select,
+[data-theme="arcade"] textarea {
+  background-color: rgba(13, 0, 26, 0.7) !important;
+  color: #f8f0ff !important;
+  font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Menlo", monospace;
+}
+[data-theme="arcade"] input::placeholder,
+[data-theme="arcade"] textarea::placeholder { color: rgba(167, 139, 250, 0.6) !important; }
+
+[data-theme="arcade"] .bg-slate-950\/45,
+[data-theme="arcade"] .bg-slate-950\/40 {
+  background-color: rgba(13, 0, 26, 0.78) !important;
+  backdrop-filter: blur(6px);
+}
+
 /* ─────────────────────────  Shared UI effects  ─────────────────────────────── */
 /* Lift orange CTA buttons subtly on hover so themes feel alive without
    touching every component. Applies in every theme.                            */
@@ -227,6 +383,10 @@ body {
 }
 [data-theme="oceanic"] .focus\:ring-orange-500:focus {
   box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
+}
+[data-theme="arcade"] .focus\:ring-orange-500:focus {
+  box-shadow: 0 0 0 3px rgba(255, 0, 110, 0.45),
+    0 0 22px rgba(0, 245, 255, 0.45);
 }
 
 /* Theme picker swatch helpers (used by ThemePicker.jsx). */
@@ -264,4 +424,13 @@ body {
   background:
     radial-gradient(rgba(255, 255, 255, 0.18) 1.2px, transparent 1.2px) 0 0 / 14px 14px,
     linear-gradient(135deg, #10b981 0%, #38bdf8 50%, #fb7185 100%);
+}
+.rr-swatch-arcade {
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 3px),
+    linear-gradient(45deg, rgba(255, 0, 110, 0.18) 25%, transparent 25%, transparent 75%, rgba(255, 0, 110, 0.18) 75%) 0 0 / 24px 24px,
+    linear-gradient(45deg, rgba(0, 245, 255, 0.18) 25%, transparent 25%, transparent 75%, rgba(0, 245, 255, 0.18) 75%) 12px 12px / 24px 24px,
+    radial-gradient(circle at 18% 18%, rgba(255, 0, 110, 0.55), transparent 60%),
+    radial-gradient(circle at 82% 82%, rgba(0, 245, 255, 0.55), transparent 60%),
+    linear-gradient(180deg, #1a0033 0%, #0d001a 100%);
 }

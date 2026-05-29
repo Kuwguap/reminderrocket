@@ -355,6 +355,28 @@ export default function Home() {
     window.localStorage.setItem("rr_telegram_chat_id", String(parsed));
   }, [telegramChatId]);
 
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const stored = window.localStorage.getItem("rr_phone");
+    if (!stored) {
+      return;
+    }
+    setPhone((prev) => (prev.trim() === "" ? stored : prev));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const raw = phone.trim();
+    if (raw === "") {
+      return;
+    }
+    window.localStorage.setItem("rr_phone", raw);
+  }, [phone]);
+
   useEffect(() => {
     if (!supabase || !user) {
       return;
@@ -471,7 +493,6 @@ export default function Home() {
 
       setSubmitSuccess("");
       setMessage("");
-      setPhone("");
       setFrequency("hourly");
       setCustomFrequencyValue("");
       setCustomFrequencyUnit("minutes");
