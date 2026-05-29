@@ -9,4 +9,259 @@
 body {
   background-color: rgb(var(--color-primary));
   color: #0f172a;
+  transition: background-color 320ms ease, color 320ms ease;
+}
+
+/* ─────────────────────────  Theme: Aurora (default)  ───────────────────────── */
+/* No overrides needed — aurora maps to the existing orange/slate look.        */
+
+/* ─────────────────────────  Theme: Midnight (dark)  ────────────────────────── */
+:root[data-theme="midnight"] {
+  color-scheme: dark;
+}
+
+[data-theme="midnight"] body {
+  background-color: #020617;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(56, 189, 248, 0.18), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 90% 110%, rgba(167, 139, 250, 0.18), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.06) 0 1px, transparent 1px 60px),
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.06) 0 1px, transparent 1px 60px);
+  color: rgb(226 232 240);
+}
+
+[data-theme="midnight"] .bg-white { background-color: rgb(15 23 42) !important; }
+[data-theme="midnight"] .bg-orange-50,
+[data-theme="midnight"] .bg-orange-50\/40,
+[data-theme="midnight"] .bg-orange-50\/60 { background-color: rgba(56, 189, 248, 0.06) !important; }
+[data-theme="midnight"] .bg-orange-100 { background-color: rgba(56, 189, 248, 0.14) !important; }
+[data-theme="midnight"] .bg-emerald-50 { background-color: rgba(167, 139, 250, 0.12) !important; }
+[data-theme="midnight"] .bg-emerald-200 { background-color: rgba(167, 139, 250, 0.28) !important; }
+
+[data-theme="midnight"] .text-slate-900,
+[data-theme="midnight"] .text-slate-800 { color: rgb(226 232 240) !important; }
+[data-theme="midnight"] .text-slate-700 { color: rgb(203 213 225) !important; }
+[data-theme="midnight"] .text-slate-600 { color: rgb(148 163 184) !important; }
+[data-theme="midnight"] .text-slate-500,
+[data-theme="midnight"] .text-slate-400 { color: rgb(100 116 139) !important; }
+[data-theme="midnight"] .text-emerald-800,
+[data-theme="midnight"] .text-emerald-900 { color: rgb(196 181 253) !important; }
+
+[data-theme="midnight"] .text-orange-500,
+[data-theme="midnight"] .text-orange-600,
+[data-theme="midnight"] .text-orange-700,
+[data-theme="midnight"] .text-orange-800,
+[data-theme="midnight"] .text-orange-900 { color: rgb(56 189 248) !important; }
+
+[data-theme="midnight"] .bg-orange-500 { background-color: rgb(56 189 248) !important; color: rgb(2 6 23) !important; }
+[data-theme="midnight"] .bg-orange-600 { background-color: rgb(14 165 233) !important; color: rgb(2 6 23) !important; }
+[data-theme="midnight"] .hover\:bg-orange-600:hover { background-color: rgb(125 211 252) !important; }
+[data-theme="midnight"] .hover\:bg-orange-100:hover { background-color: rgba(56, 189, 248, 0.18) !important; }
+[data-theme="midnight"] .hover\:bg-orange-50:hover { background-color: rgba(56, 189, 248, 0.08) !important; }
+
+[data-theme="midnight"] .border-orange-100,
+[data-theme="midnight"] .border-orange-200 { border-color: rgba(56, 189, 248, 0.22) !important; }
+[data-theme="midnight"] .border-orange-300 { border-color: rgba(56, 189, 248, 0.4) !important; }
+[data-theme="midnight"] .border-orange-400,
+[data-theme="midnight"] .border-orange-500 { border-color: rgb(56 189 248) !important; }
+[data-theme="midnight"] .border-emerald-300,
+[data-theme="midnight"] .border-emerald-400 { border-color: rgb(167 139 250) !important; }
+[data-theme="midnight"] .hover\:border-orange-300:hover,
+[data-theme="midnight"] .hover\:border-orange-400:hover,
+[data-theme="midnight"] .hover\:border-orange-500:hover { border-color: rgb(125 211 252) !important; }
+[data-theme="midnight"] .focus\:border-orange-500:focus { border-color: rgb(125 211 252) !important; }
+[data-theme="midnight"] .focus\:ring-orange-500:focus { --tw-ring-color: rgb(125 211 252) !important; }
+
+[data-theme="midnight"] input,
+[data-theme="midnight"] select,
+[data-theme="midnight"] textarea {
+  background-color: rgba(2, 6, 23, 0.6) !important;
+  color: rgb(226 232 240) !important;
+}
+[data-theme="midnight"] input::placeholder,
+[data-theme="midnight"] textarea::placeholder { color: rgb(71 85 105) !important; }
+
+[data-theme="midnight"] .bg-slate-950\/45,
+[data-theme="midnight"] .bg-slate-950\/40 {
+  background-color: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(6px);
+}
+
+/* ─────────────────────────  Theme: Sunset (bold)  ──────────────────────────── */
+[data-theme="sunset"] body {
+  background-color: #fff8f1;
+  background-image:
+    radial-gradient(ellipse 90% 60% at 0% 0%, rgba(236, 72, 153, 0.22), transparent 70%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(245, 158, 11, 0.28), transparent 70%),
+    repeating-linear-gradient(135deg, rgba(236, 72, 153, 0.05) 0 6px, transparent 6px 18px);
+  color: rgb(67 17 67);
+}
+
+[data-theme="sunset"] .bg-white { background-color: rgba(255, 255, 255, 0.86) !important; backdrop-filter: blur(6px); }
+[data-theme="sunset"] .bg-orange-50,
+[data-theme="sunset"] .bg-orange-50\/40,
+[data-theme="sunset"] .bg-orange-50\/60 { background-color: rgba(245, 158, 11, 0.12) !important; }
+[data-theme="sunset"] .bg-orange-100 { background-color: rgba(245, 158, 11, 0.22) !important; }
+
+[data-theme="sunset"] .text-slate-900 { color: rgb(67 17 67) !important; }
+[data-theme="sunset"] .text-slate-700 { color: rgb(107 33 107) !important; }
+[data-theme="sunset"] .text-slate-600 { color: rgb(140 60 130) !important; }
+[data-theme="sunset"] .text-slate-500 { color: rgb(168 85 168) !important; }
+
+[data-theme="sunset"] .text-orange-500,
+[data-theme="sunset"] .text-orange-600,
+[data-theme="sunset"] .text-orange-700,
+[data-theme="sunset"] .text-orange-800,
+[data-theme="sunset"] .text-orange-900 { color: rgb(219 39 119) !important; }
+
+[data-theme="sunset"] .bg-orange-500 {
+  background-image: linear-gradient(135deg, #ec4899 0%, #f59e0b 100%) !important;
+  background-color: #ec4899 !important;
+  color: #ffffff !important;
+}
+[data-theme="sunset"] .bg-orange-600 { background-color: #be185d !important; color: #ffffff !important; }
+[data-theme="sunset"] .hover\:bg-orange-600:hover {
+  background-image: linear-gradient(135deg, #be185d 0%, #d97706 100%) !important;
+  background-color: #be185d !important;
+}
+[data-theme="sunset"] .hover\:bg-orange-100:hover { background-color: rgba(245, 158, 11, 0.22) !important; }
+
+[data-theme="sunset"] .border-orange-100,
+[data-theme="sunset"] .border-orange-200 { border-color: rgba(236, 72, 153, 0.22) !important; }
+[data-theme="sunset"] .border-orange-300 { border-color: rgba(236, 72, 153, 0.4) !important; }
+[data-theme="sunset"] .border-orange-400,
+[data-theme="sunset"] .border-orange-500 { border-color: #ec4899 !important; }
+[data-theme="sunset"] .hover\:border-orange-300:hover,
+[data-theme="sunset"] .hover\:border-orange-400:hover,
+[data-theme="sunset"] .hover\:border-orange-500:hover { border-color: #db2777 !important; }
+[data-theme="sunset"] .focus\:border-orange-500:focus { border-color: #db2777 !important; }
+[data-theme="sunset"] .focus\:ring-orange-500:focus { --tw-ring-color: #f59e0b !important; }
+
+[data-theme="sunset"] .bg-slate-950\/45,
+[data-theme="sunset"] .bg-slate-950\/40 {
+  background-color: rgba(67, 17, 67, 0.55) !important;
+  backdrop-filter: blur(4px);
+}
+
+/* ─────────────────────────  Theme: Oceanic (bold)  ─────────────────────────── */
+[data-theme="oceanic"] body {
+  background-color: #ecfeff;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.22), transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(251, 113, 133, 0.22), transparent 50%),
+    radial-gradient(circle at 30% 80%, rgba(56, 189, 248, 0.18), transparent 60%),
+    radial-gradient(rgba(16, 185, 129, 0.18) 1.5px, transparent 1.5px);
+  background-size: auto, auto, auto, 28px 28px;
+  background-position: 0 0, 0 0, 0 0, 0 0;
+  color: rgb(15 42 53);
+}
+
+[data-theme="oceanic"] .bg-white { background-color: rgba(255, 255, 255, 0.9) !important; backdrop-filter: blur(6px); }
+[data-theme="oceanic"] .bg-orange-50,
+[data-theme="oceanic"] .bg-orange-50\/40,
+[data-theme="oceanic"] .bg-orange-50\/60 { background-color: rgba(16, 185, 129, 0.1) !important; }
+[data-theme="oceanic"] .bg-orange-100 { background-color: rgba(16, 185, 129, 0.18) !important; }
+
+[data-theme="oceanic"] .text-slate-900 { color: rgb(15 42 53) !important; }
+[data-theme="oceanic"] .text-slate-700 { color: rgb(30 70 80) !important; }
+[data-theme="oceanic"] .text-slate-600 { color: rgb(60 110 110) !important; }
+[data-theme="oceanic"] .text-slate-500 { color: rgb(100 140 140) !important; }
+
+[data-theme="oceanic"] .text-orange-500,
+[data-theme="oceanic"] .text-orange-600,
+[data-theme="oceanic"] .text-orange-700,
+[data-theme="oceanic"] .text-orange-800,
+[data-theme="oceanic"] .text-orange-900 { color: rgb(5 150 105) !important; }
+
+[data-theme="oceanic"] .bg-orange-500 {
+  background-image: linear-gradient(135deg, #10b981 0%, #fb7185 100%) !important;
+  background-color: #10b981 !important;
+  color: #ffffff !important;
+}
+[data-theme="oceanic"] .bg-orange-600 { background-color: #047857 !important; color: #ffffff !important; }
+[data-theme="oceanic"] .hover\:bg-orange-600:hover {
+  background-image: linear-gradient(135deg, #047857 0%, #f43f5e 100%) !important;
+  background-color: #047857 !important;
+}
+[data-theme="oceanic"] .hover\:bg-orange-100:hover { background-color: rgba(16, 185, 129, 0.2) !important; }
+
+[data-theme="oceanic"] .border-orange-100,
+[data-theme="oceanic"] .border-orange-200 { border-color: rgba(16, 185, 129, 0.22) !important; }
+[data-theme="oceanic"] .border-orange-300 { border-color: rgba(16, 185, 129, 0.4) !important; }
+[data-theme="oceanic"] .border-orange-400,
+[data-theme="oceanic"] .border-orange-500 { border-color: #10b981 !important; }
+[data-theme="oceanic"] .hover\:border-orange-300:hover,
+[data-theme="oceanic"] .hover\:border-orange-400:hover,
+[data-theme="oceanic"] .hover\:border-orange-500:hover { border-color: #059669 !important; }
+[data-theme="oceanic"] .focus\:border-orange-500:focus { border-color: #059669 !important; }
+[data-theme="oceanic"] .focus\:ring-orange-500:focus { --tw-ring-color: #10b981 !important; }
+
+[data-theme="oceanic"] .bg-slate-950\/45,
+[data-theme="oceanic"] .bg-slate-950\/40 {
+  background-color: rgba(6, 78, 59, 0.55) !important;
+  backdrop-filter: blur(4px);
+}
+
+/* ─────────────────────────  Shared UI effects  ─────────────────────────────── */
+/* Lift orange CTA buttons subtly on hover so themes feel alive without
+   touching every component. Applies in every theme.                            */
+.bg-orange-500 {
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.18);
+  transition: transform 160ms ease, box-shadow 200ms ease, background-color 200ms ease,
+    background-image 200ms ease;
+}
+.bg-orange-500:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -8px rgba(0, 0, 0, 0.28);
+}
+
+/* Accent glow ring on focused inputs. */
+.focus\:ring-orange-500:focus {
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.18);
+}
+[data-theme="midnight"] .focus\:ring-orange-500:focus {
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.28);
+}
+[data-theme="sunset"] .focus\:ring-orange-500:focus {
+  box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.25);
+}
+[data-theme="oceanic"] .focus\:ring-orange-500:focus {
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
+}
+
+/* Theme picker swatch helpers (used by ThemePicker.jsx). */
+.rr-swatch {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 1rem;
+  overflow: hidden;
+  isolation: isolate;
+}
+.rr-swatch::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: inherit;
+}
+.rr-swatch-aurora {
+  background:
+    radial-gradient(circle at 20% 80%, rgba(249, 115, 22, 0.35), transparent 60%),
+    linear-gradient(135deg, #ffffff 0%, #fff7ed 100%);
+}
+.rr-swatch-midnight {
+  background:
+    radial-gradient(circle at 70% 30%, rgba(167, 139, 250, 0.45), transparent 55%),
+    radial-gradient(circle at 20% 80%, rgba(56, 189, 248, 0.4), transparent 55%),
+    linear-gradient(135deg, #020617 0%, #0f172a 100%);
+}
+.rr-swatch-sunset {
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0 6px, transparent 6px 14px),
+    linear-gradient(135deg, #ec4899 0%, #f59e0b 100%);
+}
+.rr-swatch-oceanic {
+  background:
+    radial-gradient(rgba(255, 255, 255, 0.18) 1.2px, transparent 1.2px) 0 0 / 14px 14px,
+    linear-gradient(135deg, #10b981 0%, #38bdf8 50%, #fb7185 100%);
 }

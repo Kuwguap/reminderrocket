@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getNotificationDestinationRows } from "../../lib/notificationDestinations";
 import { formatDateTimeNy } from "../../lib/nyTime";
+import ThemePicker from "../../components/ThemePicker";
 
 export default function SettingsPage() {
   const [adminPassword, setAdminPassword] = useState("");
@@ -169,7 +170,9 @@ export default function SettingsPage() {
   if (!isAdminAuthed) {
     return (
       <main className="min-h-screen bg-white">
-        <div className="mx-auto max-w-md px-6 py-16">
+        <div className="mx-auto grid max-w-2xl gap-6 px-6 py-12">
+          <ThemePicker />
+
           <div className="rounded-3xl border border-orange-200 bg-white p-6 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
               Admin access
@@ -232,7 +235,11 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        <section className="mt-8 rounded-3xl border border-orange-200 bg-white p-6 shadow-sm">
+        <div className="mt-8">
+          <ThemePicker />
+        </div>
+
+        <section className="mt-6 rounded-3xl border border-orange-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">
             Environment status
           </h2>
