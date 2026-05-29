@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../../lib/emailTemplate";
-import { isVonageConfigured, sendVonageSms } from "../../../../lib/vonageSms";
+import { getSmsProvider } from "../../../../lib/smsProvider";
 
 function hasValue(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -67,18 +67,23 @@ export async function POST(request) {
   }
 
   if (phone) {
-    if (!isVonageConfigured()) {
-      results.sms = { status: "skipped", error: "Missing Vonage env vars." };
+    const smsProvider = getSmsProvider();
+    if (!smsProvider.isConfigured()) {
+      results.sms = {
+        status: "skipped",
+        error: `Missing ${smsProvider.provider} SMS env vars.`,
+      };
     } else {
       try {
-        await sendVonageSms({
+        await smsProvider.send({
           to: phone,
           body: "Reminder Rocket test SMS",
         });
-        results.sms = { status: "sent" };
+        results.sms = { status: "sent", provider: smsProvider.provider };
       } catch (error) {
         results.sms = {
           status: "failed",
+          provider: smsProvider.provider,
           error: error instanceof Error ? error.message : "SMS failed.",
         };
       }

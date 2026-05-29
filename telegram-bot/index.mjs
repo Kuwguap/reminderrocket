@@ -13,12 +13,18 @@ const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseAnon =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const botSecret = process.env.REMINDERROCKET_BOT_SECRET || "";
 
 if (!token || !supabaseUrl || !supabaseAnon || !appBase) {
   console.error(
     "Missing env: TELEGRAM_BOT_TOKEN, APP_BASE_URL, and Supabase URL + anon key."
   );
   process.exit(1);
+}
+if (!botSecret) {
+  console.warn(
+    "REMINDERROCKET_BOT_SECRET not set — photo proof uploads will be disabled."
+  );
 }
 
 const supabaseAuth = createClient(supabaseUrl, supabaseAnon);
@@ -37,6 +43,8 @@ function sess(chatId) {
       pendingEmail: null,
       wizard: null,
       draft: null,
+      pendingProofFileId: null,
+      pendingProofTargets: null,
     };
     sessions.set(chatId, s);
   }
@@ -73,6 +81,98 @@ async function apiFetch(chatId, path, init = {}) {
   return { res, json };
 }
 
+/**
+ * Fetch active proof-based reminders for a chat via the internal bot endpoint.
+ * @param {number} chatId
+ * @returns {Promise<Array<{ id: string, message: string }>>}
+ */
+async function listProofTargetsForChat(chatId) {
+  if (!botSecret) return [];
+  const url = `${appBase}/api/telegram/proof-targets?telegram_chat_id=${encodeURIComponent(
+    String(chatId)
+  )}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${botSecret}` },
+  });
+  if (!res.ok) return [];
+  const json = await res.json().catch(() => ({}));
+  return Array.isArray(json?.reminders) ? json.reminders : [];
+}
+
+/**
+ * Resolve a Telegram file_id to its CDN URL.
+ * @param {string} fileId
+ * @returns {Promise<string | null>}
+ */
+async function resolveTelegramFileUrl(fileId) {
+  const res = await fetch(
+    `https://api.telegram.org/bot${token}/getFile?file_id=${encodeURIComponent(
+      fileId
+    )}`
+  );
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok || !payload.ok || !payload.result?.file_path) {
+    return null;
+  }
+  return `https://api.telegram.org/file/bot${token}/${payload.result.file_path}`;
+}
+
+/**
+ * Download a Telegram photo and POST it to the proof endpoint as the bot,
+ * authenticated via the shared secret + chat_id.
+ * @param {number} chatId
+ * @param {string} reminderId
+ * @param {string} fileId
+ * @returns {Promise<{ ok: boolean, error?: string }>}
+ */
+async function uploadProofFromTelegram(chatId, reminderId, fileId) {
+  if (!botSecret) {
+    return {
+      ok: false,
+      error: "Bot secret not configured on the server side.",
+    };
+  }
+  const fileUrl = await resolveTelegramFileUrl(fileId);
+  if (!fileUrl) {
+    return { ok: false, error: "Could not resolve Telegram file." };
+  }
+  const fileRes = await fetch(fileUrl);
+  if (!fileRes.ok) {
+    return { ok: false, error: `Telegram file download HTTP ${fileRes.status}.` };
+  }
+  const arrayBuffer = await fileRes.arrayBuffer();
+  const contentType = fileRes.headers.get("content-type") || "image/jpeg";
+  const ext = contentType.includes("png") ? "png" : "jpg";
+  const filename = `telegram-${Date.now()}.${ext}`;
+  const blob = new Blob([arrayBuffer], { type: contentType });
+
+  const form = new FormData();
+  form.append("file", blob, filename);
+
+  const url = `${appBase}/api/reminders/${encodeURIComponent(
+    reminderId
+  )}/proof?telegram_chat_id=${encodeURIComponent(String(chatId))}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${botSecret}` },
+    body: form,
+  });
+  const text = await res.text();
+  let json = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    /* ignore */
+  }
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: json?.error || `Upload failed (HTTP ${res.status}).`,
+    };
+  }
+  return { ok: true };
+}
+
 const bot = new Bot(token);
 
 bot.command("help", async (ctx) => {
@@ -88,6 +188,7 @@ bot.command("help", async (ctx) => {
       "/login — send email, then password (same account as the site)",
       "/logout — clear login in this chat",
       "",
+      "Send a photo to complete a picture-proof reminder right here.",
       "Telegram-only launches work without signing in.",
       "Sign in to see the same reminders as reminderrocket on the web.",
       "",
@@ -276,6 +377,30 @@ bot.on("callback_query:data", async (ctx) => {
     }
     return;
   }
+
+  if (data.startsWith("up:")) {
+    await ack();
+    const reminderId = data.slice(3);
+    const fileId = s.pendingProofFileId;
+    if (!fileId) {
+      await ctx.reply(
+        `That photo is no longer pending. Send a new photo to upload.${foot(id)}`
+      );
+      return;
+    }
+    s.pendingProofFileId = null;
+    s.pendingProofTargets = null;
+    await ctx.reply(`Uploading proof…${foot(id)}`);
+    const result = await uploadProofFromTelegram(id, reminderId, fileId);
+    if (!result.ok) {
+      await ctx.reply(
+        `Upload failed: ${result.error || "unknown error"}.${foot(id)}`
+      );
+      return;
+    }
+    await ctx.reply(`Mission complete. Proof uploaded.${foot(id)}`);
+    return;
+  }
 });
 
 /**
@@ -453,6 +578,59 @@ bot.on("message:text", async (ctx) => {
     await finalizeDraft(ctx, id);
     return;
   }
+});
+
+bot.on("message:photo", async (ctx) => {
+  const id = ctx.chat?.id;
+  if (id == null) return;
+  const photos = ctx.message?.photo ?? [];
+  if (photos.length === 0) return;
+  const fileId = photos[photos.length - 1].file_id;
+  const s = sess(id);
+
+  if (!botSecret) {
+    await ctx.reply(
+      `Photo proof uploads aren't configured on the server yet. Open the upload link from the reminder for now.${foot(
+        id
+      )}`
+    );
+    return;
+  }
+
+  const targets = await listProofTargetsForChat(id);
+  if (targets.length === 0) {
+    await ctx.reply(
+      `No active picture-proof reminders to complete in this chat. Launch one or wait for the next reminder.${foot(
+        id
+      )}`
+    );
+    return;
+  }
+
+  if (targets.length === 1) {
+    const target = targets[0];
+    await ctx.reply(`Uploading proof for: ${target.message}…${foot(id)}`);
+    const result = await uploadProofFromTelegram(id, target.id, fileId);
+    if (!result.ok) {
+      await ctx.reply(
+        `Upload failed: ${result.error || "unknown error"}.${foot(id)}`
+      );
+      return;
+    }
+    await ctx.reply(`Mission complete. Proof uploaded.${foot(id)}`);
+    return;
+  }
+
+  s.pendingProofFileId = fileId;
+  s.pendingProofTargets = targets.map((t) => t.id);
+  const kb = new InlineKeyboard();
+  for (const t of targets.slice(0, 8)) {
+    const label = (t.message || "Reminder").slice(0, 48);
+    kb.text(label, `up:${t.id}`).row();
+  }
+  await ctx.reply(`Which mission does this proof complete?${foot(id)}`, {
+    reply_markup: kb,
+  });
 });
 
 bot.catch((err) => {

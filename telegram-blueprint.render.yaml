@@ -1,7 +1,8 @@
 # Render.com-style blueprint: deploy the Telegram worker with Docker.
 # Point Docker context to the repository root and use telegram-bot/Dockerfile.
 # Set these secrets in the dashboard (or via sync: false placeholders):
-#   TELEGRAM_BOT_TOKEN, APP_BASE_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+#   TELEGRAM_BOT_TOKEN, APP_BASE_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+#   REMINDERROCKET_BOT_SECRET (must match the value in the Vercel project)
 #
 # ---
 services:
@@ -19,4 +20,6 @@ services:
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: REMINDERROCKET_BOT_SECRET
         sync: false

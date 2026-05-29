@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../lib/emailTemplate";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
-import { isVonageConfigured } from "../../../lib/vonageSms";
+import { getSmsProvider } from "../../../lib/smsProvider";
 import { getSupabaseAuthClientForRequest } from "../../../lib/supabaseRouteAuth";
 import { applyReminderListFilter } from "../../../lib/reminderAccess";
 import { getServerAuthUser } from "../../../lib/serverAuthUser";
@@ -231,16 +231,16 @@ export async function POST(request) {
       );
     }
 
-    if (data.phone && !isVonageConfigured()) {
-      return NextResponse.json(
-        {
-          errors: {
-            phone:
-              "SMS requires Vonage: set VONAGE_API_KEY, VONAGE_API_SECRET, and VONAGE_SMS_FROM.",
+    if (data.phone) {
+      const smsProvider = getSmsProvider();
+      if (!smsProvider.isConfigured()) {
+        return NextResponse.json(
+          {
+            errors: { phone: smsProvider.missingEnvHint },
           },
-        },
-        { status: 400 }
-      );
+          { status: 400 }
+        );
+      }
     }
 
     // When start_time is now (or earlier), fire on the next cron tick instead of waiting a full interval.

@@ -7,6 +7,7 @@ import { getServerAuthUser } from "../../../../../lib/serverAuthUser";
 import { createSupabaseServerClient } from "../../../../../lib/supabaseServer";
 import { getSupabaseAuthClientForRequest } from "../../../../../lib/supabaseRouteAuth";
 import { formatDateTimeNy } from "../../../../../lib/nyTime";
+import { hasValidBotSecret } from "../../../../../lib/botAuth";
 
 async function sendMissionCompleteEmail(reminder, proofSignedUrl) {
   const resendApiKey = process.env.RESEND_API_KEY;
@@ -73,7 +74,6 @@ export async function POST(request, { params }) {
       );
     }
 
-    const authClient = getSupabaseAuthClientForRequest(request);
     let supabase;
     try {
       supabase = createSupabaseServerClient();
@@ -85,11 +85,30 @@ export async function POST(request, { params }) {
     }
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("client_id");
+    const telegramChatIdParam = searchParams.get("telegram_chat_id");
 
+    const isBotRequest = hasValidBotSecret(request);
+    const telegramChatId =
+      isBotRequest && telegramChatIdParam
+        ? Number(telegramChatIdParam)
+        : null;
+    if (
+      isBotRequest &&
+      (telegramChatId == null || !Number.isFinite(telegramChatId))
+    ) {
+      return NextResponse.json(
+        { error: "Invalid telegram_chat_id for bot request." },
+        { status: 400 }
+      );
+    }
+
+    const authClient = isBotRequest
+      ? null
+      : getSupabaseAuthClientForRequest(request);
     const user =
       authClient != null ? await getServerAuthUser(authClient) : null;
 
-    if (!user && !clientId) {
+    if (!isBotRequest && !user && !clientId) {
       return NextResponse.json(
         { error: "Missing device session." },
         { status: 400 }
@@ -108,10 +127,14 @@ export async function POST(request, { params }) {
 
     let reminderQuery = supabase
       .from("reminders")
-      .select("id, stop_condition, status")
+      .select("id, stop_condition, status, telegram_chat_id")
       .eq("id", id);
 
-    reminderQuery = applyReminderOwnerFilter(reminderQuery, user, clientId);
+    if (isBotRequest) {
+      reminderQuery = reminderQuery.eq("telegram_chat_id", telegramChatId);
+    } else {
+      reminderQuery = applyReminderOwnerFilter(reminderQuery, user, clientId);
+    }
 
     const { data: reminder, error: fetchError } = await reminderQuery.single();
 

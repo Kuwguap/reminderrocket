@@ -11,7 +11,7 @@ import {
   msUntil,
 } from "../../../../lib/nyTime";
 import { pickTwoRandomQuotes } from "../../../../lib/reminderQuotes";
-import { isVonageConfigured, sendVonageSms } from "../../../../lib/vonageSms";
+import { getSmsProvider } from "../../../../lib/smsProvider";
 import {
   escapeTelegramHtml,
   sendTelegramMessage,
@@ -199,7 +199,8 @@ export async function GET(request) {
   const hasResend =
     Boolean(process.env.RESEND_API_KEY) &&
     Boolean(process.env.RESEND_FROM_EMAIL);
-  const hasVonage = isVonageConfigured();
+  const smsProvider = getSmsProvider();
+  const hasSms = smsProvider.isConfigured();
   const appBaseUrl = process.env.APP_BASE_URL || "";
   const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -261,16 +262,16 @@ export async function GET(request) {
 
     if (reminder.phone) {
       try {
-        if (!hasVonage) {
+        if (!hasSms) {
           await supabase.from("reminder_attempts").insert({
             reminder_id: reminder.id,
             channel: "sms",
             status: "skipped",
-            error_message: "Missing Vonage configuration.",
+            error_message: `Missing ${smsProvider.provider} SMS configuration.`,
           });
         } else {
           hasConfiguredChannel = true;
-          await sendVonageSms({ to: reminder.phone, body: smsMessage });
+          await smsProvider.send({ to: reminder.phone, body: smsMessage });
           await supabase.from("reminder_attempts").insert({
             reminder_id: reminder.id,
             channel: "sms",

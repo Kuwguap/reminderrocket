@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "../../../../lib/supabaseServer";
+import { getSmsProvider } from "../../../../lib/smsProvider";
 
 function hasValue(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -10,6 +11,8 @@ export async function GET() {
     hasValue(process.env.VONAGE_SMS_FROM) ||
     hasValue(process.env.VONAGE_FROM_NUMBER) ||
     hasValue(process.env.VONAGE_FROM);
+
+  const smsProvider = getSmsProvider();
 
   const envStatus = {
     supabaseUrl: hasValue(process.env.NEXT_PUBLIC_SUPABASE_URL),
@@ -24,6 +27,8 @@ export async function GET() {
       hasValue(process.env.VONAGE_API_SECRET) ||
       hasValue(process.env.NEXMO_API_SECRET),
     vonageSmsFrom: vonageFrom,
+    highlevelToken: hasValue(process.env.HIGHLEVEL_PIT_TOKEN),
+    highlevelLocationId: hasValue(process.env.HIGHLEVEL_LOCATION_ID),
     appBaseUrl: hasValue(process.env.APP_BASE_URL),
   };
 
@@ -34,6 +39,9 @@ export async function GET() {
       envStatus.vonageApiKey &&
       envStatus.vonageApiSecret &&
       envStatus.vonageSmsFrom,
+    highlevel: envStatus.highlevelToken && envStatus.highlevelLocationId,
+    smsProvider: smsProvider.provider,
+    sms: smsProvider.isConfigured(),
   };
 
   let supabaseError = null;
