@@ -45,6 +45,7 @@ function sess(chatId) {
       draft: null,
       pendingProofFileId: null,
       pendingProofTargets: null,
+      pendingProofTargetId: null,
     };
     sessions.set(chatId, s);
   }
@@ -401,6 +402,24 @@ bot.on("callback_query:data", async (ctx) => {
     await ctx.reply(`Mission complete. Proof uploaded.${foot(id)}`);
     return;
   }
+
+  if (data.startsWith("pf:")) {
+    await ack();
+    const reminderId = data.slice(3);
+    if (!botSecret) {
+      await ctx.reply(
+        `Photo proof uploads aren't configured on the server yet.${foot(id)}`
+      );
+      return;
+    }
+    s.pendingProofTargetId = reminderId;
+    await ctx.reply(
+      `📸 Now send the photo to this chat — I'll attach it to that reminder.${foot(
+        id
+      )}`
+    );
+    return;
+  }
 });
 
 /**
@@ -594,6 +613,24 @@ bot.on("message:photo", async (ctx) => {
         id
       )}`
     );
+    return;
+  }
+
+  // Inline-button flow: user pressed "Upload Photo" first, this is the photo.
+  if (s.pendingProofTargetId) {
+    const reminderId = s.pendingProofTargetId;
+    s.pendingProofTargetId = null;
+    s.pendingProofFileId = null;
+    s.pendingProofTargets = null;
+    await ctx.reply(`Uploading proof…${foot(id)}`);
+    const result = await uploadProofFromTelegram(id, reminderId, fileId);
+    if (!result.ok) {
+      await ctx.reply(
+        `Upload failed: ${result.error || "unknown error"}.${foot(id)}`
+      );
+      return;
+    }
+    await ctx.reply(`Mission complete. Proof uploaded.${foot(id)}`);
     return;
   }
 

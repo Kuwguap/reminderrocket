@@ -117,14 +117,21 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs }) {
     nextLaunchShort,
     "",
     "✅ To complete this mission:",
-    "📸 Send a photo here in this chat — I'll mark it done.",
+    "📸 Tap the button below or just send a photo to this chat.",
     "",
     TELEGRAM_DIVIDER,
     "",
     quote1,
     quote2,
   ];
-  return { body: proofParts.join("\n") };
+
+  const replyMarkup = {
+    inline_keyboard: [
+      [{ text: "📸 Upload Photo", callback_data: `pf:${reminder.id}` }],
+    ],
+  };
+
+  return { body: proofParts.join("\n"), replyMarkup };
 }
 
 async function getAnnoyMeta(reminderId, channel, supabase) {
@@ -324,15 +331,16 @@ export async function GET(request) {
           });
         } else {
           hasConfiguredChannel = true;
-          const { body: tgBody } = buildTelegramReminderMessage(reminder, {
-            now,
-            intervalMs,
-          });
+          const { body: tgBody, replyMarkup } = buildTelegramReminderMessage(
+            reminder,
+            { now, intervalMs }
+          );
 
           const tgResult = await sendTelegramMessage(
             telegramBotToken,
             Number(reminder.telegram_chat_id),
-            tgBody
+            tgBody,
+            { replyMarkup }
           );
           if (!tgResult.ok) {
             await supabase.from("reminder_attempts").insert({
