@@ -408,7 +408,7 @@ bot.on("callback_query:data", async (ctx) => {
     const reminderId = data.slice(3);
     if (!botSecret) {
       await ctx.reply(
-        `Photo proof uploads aren't configured on the server yet.${foot(id)}`
+        `Photo proof uploads aren't configured on this bot service. Set REMINDERROCKET_BOT_SECRET in the bot's environment and redeploy.${foot(id)}`
       );
       return;
     }
@@ -609,7 +609,7 @@ bot.on("message:photo", async (ctx) => {
 
   if (!botSecret) {
     await ctx.reply(
-      `Photo proof uploads aren't configured on the server yet. Open the upload link from the reminder for now.${foot(
+      `Photo proof uploads aren't configured on this bot service. Set REMINDERROCKET_BOT_SECRET in the bot's environment and redeploy.${foot(
         id
       )}`
     );
