@@ -176,35 +176,56 @@ async function uploadProofFromTelegram(chatId, reminderId, fileId) {
 
 const bot = new Bot(token);
 
+const HELP_TEXT = [
+  "🚀 Reminder Rocket Commands",
+  "",
+  "🚀 /launch — Create a new reminder",
+  "",
+  "📋 /myreminders — View your active reminders",
+  "🔑 (Use /login first)",
+  "",
+  "🛑 /stop reminder_id — Stop a reminder",
+  "",
+  "🔐 /login — Sign in with your Reminder Rocket account",
+  "",
+  "🚪 /logout — Sign out of this chat",
+  "",
+  "📸 Send a photo anytime to complete a picture-proof reminder.",
+  "",
+  "✨ Telegram-only reminders work instantly — no login required.",
+].join("\n");
+
+/**
+ * Inline keyboard mirroring the slash commands. The login button flips to
+ * "Logout" when the chat has an active access token.
+ * @param {ReturnType<typeof sess>} s
+ */
+function helpKeyboard(s) {
+  const loggedIn = Boolean(s.accessToken);
+  return new InlineKeyboard()
+    .text("🚀 Launch", "cmd:launch")
+    .text("📋 My Reminders", "cmd:myreminders")
+    .row()
+    .text(
+      loggedIn ? "🚪 Logout" : "🔐 Login",
+      loggedIn ? "cmd:logout" : "cmd:login"
+    );
+}
+
 bot.command("help", async (ctx) => {
   const id = ctx.chat?.id;
   if (id == null) return;
-  await ctx.reply(
-    [
-      "Reminder Rocket (Telegram)",
-      "",
-      "/launch — create a reminder (mirrors the website)",
-      "/myreminders — list active (use /login first)",
-      "/stop <reminder_id> — stop one (id from /myreminders)",
-      "/login — send email, then password (same account as the site)",
-      "/logout — clear login in this chat",
-      "",
-      "Send a photo to complete a picture-proof reminder right here.",
-      "Telegram-only launches work without signing in.",
-      "Sign in to see the same reminders as reminderrocket on the web.",
-      "",
-      `Web app: ${appBase}`,
-    ].join("\n")
-  );
-  await ctx.reply(foot(id));
+  const s = sess(id);
+  await ctx.reply(HELP_TEXT, { reply_markup: helpKeyboard(s) });
 });
 
 bot.command("start", async (ctx) => {
   const id = ctx.chat?.id;
   if (id == null) return;
-  sess(id);
+  const s = sess(id);
   await ctx.reply(
-    `Reminder Rocket — I ping you until the job is done.\nRun /help for commands.${foot(id)}`
+    `Reminder Rocket — I ping you until the job is done.\nTap a button or run /help for commands.${foot(id)}`,
+    { reply_markup: helpKeyboard(s) }
   );
 });
 
@@ -216,7 +237,9 @@ bot.command("logout", async (ctx) => {
   s.loginEmail = null;
   s.loginStep = null;
   s.pendingEmail = null;
-  await ctx.reply(`Signed out of this chat.${foot(id)}`);
+  await ctx.reply(`Signed out of this chat.${foot(id)}`, {
+    reply_markup: helpKeyboard(s),
+  });
 });
 
 bot.command("login", async (ctx) => {
@@ -420,6 +443,88 @@ bot.on("callback_query:data", async (ctx) => {
     );
     return;
   }
+
+  if (data.startsWith("cmd:")) {
+    await ack();
+    const cmd = data.slice(4);
+
+    if (cmd === "launch") {
+      s.wizard = "await_message";
+      s.draft = {};
+      await ctx.reply(
+        `What should we remind you to do? Reply with one clear line.${foot(id)}`
+      );
+      return;
+    }
+
+    if (cmd === "myreminders") {
+      if (!s.accessToken) {
+        await ctx.reply(
+          `Sign in first to load your account reminders.${foot(id)}`,
+          { reply_markup: helpKeyboard(s) }
+        );
+        return;
+      }
+      const { res, json } = await apiFetch(id, `/api/reminders?status=active`, {
+        method: "GET",
+      });
+      if (!res.ok) {
+        await ctx.reply(`Could not load reminders (${res.status}).${foot(id)}`);
+        return;
+      }
+      const rows = json?.reminders ?? [];
+      if (rows.length === 0) {
+        await ctx.reply(
+          `No active reminders. Tap 🚀 Launch to start one.${foot(id)}`,
+          { reply_markup: helpKeyboard(s) }
+        );
+        return;
+      }
+      const lines = rows.slice(0, 15).map((r, i) => {
+        const stop =
+          r.stop_condition === "proof"
+            ? "proof"
+            : r.stop_at
+              ? formatDateTimeNy(r.stop_at)
+              : "—";
+        return `${i + 1}. ${r.message}\n   id: ${r.id}\n   next: ${formatDateTimeNy(
+          r.next_run_at
+        )}\n   stop: ${stop}`;
+      });
+      await ctx.reply(
+        `${lines.join("\n\n")}\n\nStop with: /stop <id>${foot(id)}`
+      );
+      return;
+    }
+
+    if (cmd === "login") {
+      if (s.accessToken) {
+        await ctx.reply(
+          `You're already logged in as ${s.loginEmail}. Tap 🚪 Logout to switch accounts.${foot(
+            id
+          )}`,
+          { reply_markup: helpKeyboard(s) }
+        );
+        return;
+      }
+      s.loginStep = "email";
+      s.pendingEmail = null;
+      await ctx.reply(`Send the email you use on the website.${foot(id)}`);
+      return;
+    }
+
+    if (cmd === "logout") {
+      s.accessToken = null;
+      s.loginEmail = null;
+      s.loginStep = null;
+      s.pendingEmail = null;
+      await ctx.reply(`Signed out of this chat.${foot(id)}`, {
+        reply_markup: helpKeyboard(s),
+      });
+      return;
+    }
+    return;
+  }
 });
 
 /**
@@ -538,7 +643,9 @@ bot.on("message:text", async (ctx) => {
     }
     s.accessToken = data.session.access_token;
     s.loginEmail = data.user?.email ?? email;
-    await ctx.reply(`Linked. I’ll show your email on every reply.${foot(id)}`);
+    await ctx.reply(`Linked. I’ll show your email on every reply.${foot(id)}`, {
+      reply_markup: helpKeyboard(s),
+    });
     return;
   }
 
