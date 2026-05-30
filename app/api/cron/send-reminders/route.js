@@ -79,7 +79,7 @@ const TELEGRAM_DIVIDER = "━━━━━━━━━━━━━━━";
  * @param {{ now: Date, intervalMs: number, uploadUrl: string | null }} ctx
  * @returns {{ body: string, replyMarkup: object | undefined }}
  */
-function buildTelegramReminderMessage(reminder, { now, intervalMs }) {
+function buildTelegramReminderMessage(reminder, { now, intervalMs, stopUrl }) {
   const [quote1, quote2] = pickTwoRandomQuotes();
   const nextLaunchShort = formatTimeShortNy(
     new Date(now.getTime() + intervalMs).toISOString()
@@ -105,7 +105,12 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs }) {
       quote1,
       quote2,
     ];
-    return { body: parts.join("\n") };
+    const replyMarkup = stopUrl
+      ? {
+          inline_keyboard: [[{ text: "🛑 Stop Reminder", url: stopUrl }]],
+        }
+      : undefined;
+    return { body: parts.join("\n"), replyMarkup };
   }
 
   const proofParts = [
@@ -338,7 +343,7 @@ export async function GET(request) {
           hasConfiguredChannel = true;
           const { body: tgBody, replyMarkup } = buildTelegramReminderMessage(
             reminder,
-            { now, intervalMs }
+            { now, intervalMs, stopUrl }
           );
 
           const tgResult = await sendTelegramMessage(
