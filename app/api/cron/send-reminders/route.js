@@ -13,6 +13,8 @@ import {
 import { pickTwoRandomQuotes } from "../../../../lib/reminderQuotes";
 import { getSmsProvider } from "../../../../lib/smsProvider";
 import { sendTelegramMessage } from "../../../../lib/telegramNotify";
+import { buildStopUrl } from "../../../../lib/stopToken";
+import { getAnnoyPhrase } from "../../../../lib/smsPhrases";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -143,12 +145,7 @@ async function getAnnoyMeta(reminderId, channel, supabase) {
     .eq("status", "sent");
 
   const attemptCount = error ? 0 : count ?? 0;
-  const tone =
-    attemptCount === 0
-      ? "Hey, did you do it?"
-      : attemptCount === 1
-      ? "You're ignoring this."
-      : "Last warning.";
+  const tone = getAnnoyPhrase(attemptCount);
   // Flat 15 minutes between annoy pings → 4 reminders / hour.
   const intervalMs = 15 * 60 * 1000;
 
@@ -230,9 +227,17 @@ export async function GET(request) {
     }
 
     const uploadUrl = buildUploadUrl(reminder, appBaseUrl);
-    const smsMessage = annoyMeta?.tone
+    const stopUrl = buildStopUrl(reminder.id, appBaseUrl);
+    const smsCore = annoyMeta?.tone
       ? `${annoyMeta.tone}\n${reminder.message}`
       : reminder.message;
+    // Append a one-tap "Stop" link unless the reminder requires picture
+    // proof (in that case stopping requires a photo, not a tap).
+    const canStopByLink =
+      reminder.stop_condition !== "proof" && Boolean(stopUrl);
+    const smsMessage = canStopByLink
+      ? `${smsCore}\nStop: ${stopUrl}`
+      : smsCore;
 
     if (reminder.phone) {
       try {
