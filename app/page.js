@@ -1025,24 +1025,33 @@ export default function Home() {
                   <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                     Text Rocket
                     <input
-                      type="tel"
-                      placeholder="(555) 123-4567"
+                      type="text"
+                      inputMode="tel"
+                      placeholder="555-301-3737, 551-374-0027"
                       value={phone}
                       onChange={(event) => setPhone(event.target.value)}
                       className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
+                    <span className="text-[10px] font-normal text-slate-500">
+                      Separate multiple numbers with commas.
+                    </span>
                     {renderError("phone")}
                   </label>
 
                   <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
                     Email Rocket
                     <input
-                      type="email"
-                      placeholder="rocket@launch.com"
+                      type="text"
+                      inputMode="email"
+                      autoComplete="email"
+                      placeholder="alex@launch.com, jamie@launch.com"
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
                       className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
+                    <span className="text-[10px] font-normal text-slate-500">
+                      Separate multiple emails with commas.
+                    </span>
                     {renderError("email")}
                   </label>
                 </div>

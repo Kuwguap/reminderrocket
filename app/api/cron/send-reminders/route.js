@@ -15,6 +15,7 @@ import { getSmsProvider } from "../../../../lib/smsProvider";
 import { sendTelegramMessage } from "../../../../lib/telegramNotify";
 import { buildStopUrl } from "../../../../lib/stopToken";
 import { getAnnoyPhrase } from "../../../../lib/smsPhrases";
+import { splitRecipients } from "../../../../lib/recipientList";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -236,97 +237,106 @@ export async function GET(request) {
     const smsCore = annoyMeta?.tone
       ? `${annoyMeta.tone}\n${reminder.message}`
       : reminder.message;
-    // Append a one-tap "Stop" link unless the reminder requires picture
-    // proof (in that case stopping requires a photo, not a tap).
-    const canStopByLink =
-      reminder.stop_condition !== "proof" && Boolean(stopUrl);
-    const smsMessage = canStopByLink
-      ? `${smsCore}\nStop: ${stopUrl}`
-      : smsCore;
+    // Proof reminders surface the upload link (mirrors the email CTA);
+    // everything else gets a one-tap Stop link.
+    let smsMessage = smsCore;
+    if (reminder.stop_condition === "proof" && uploadUrl) {
+      smsMessage += `\nUpload proof: ${uploadUrl}`;
+    } else if (reminder.stop_condition !== "proof" && stopUrl) {
+      smsMessage += `\nStop: ${stopUrl}`;
+    }
 
-    if (reminder.phone) {
-      try {
-        if (!hasSms) {
-          await supabase.from("reminder_attempts").insert({
-            reminder_id: reminder.id,
-            channel: "sms",
-            status: "skipped",
-            error_message: `Missing ${smsProvider.provider} SMS configuration.`,
-          });
-        } else {
-          hasConfiguredChannel = true;
-          await smsProvider.send({ to: reminder.phone, body: smsMessage });
-          await supabase.from("reminder_attempts").insert({
-            reminder_id: reminder.id,
-            channel: "sms",
-            status: "sent",
-          });
-          delivered = true;
-        }
-      } catch (error) {
+    const phoneList = splitRecipients(reminder.phone);
+    if (phoneList.length > 0) {
+      if (!hasSms) {
         await supabase.from("reminder_attempts").insert({
           reminder_id: reminder.id,
           channel: "sms",
-          status: "failed",
-          error_message: String(error),
+          status: "skipped",
+          error_message: `Missing ${smsProvider.provider} SMS configuration.`,
         });
+      } else {
+        hasConfiguredChannel = true;
+        for (const phone of phoneList) {
+          try {
+            await smsProvider.send({ to: phone, body: smsMessage });
+            await supabase.from("reminder_attempts").insert({
+              reminder_id: reminder.id,
+              channel: "sms",
+              status: "sent",
+              error_message: `to ${phone}`,
+            });
+            delivered = true;
+          } catch (error) {
+            await supabase.from("reminder_attempts").insert({
+              reminder_id: reminder.id,
+              channel: "sms",
+              status: "failed",
+              error_message: `${phone}: ${String(error)}`,
+            });
+          }
+        }
       }
     }
 
-    if (reminder.email) {
-      try {
-        if (!hasResend) {
-          await supabase.from("reminder_attempts").insert({
-            reminder_id: reminder.id,
-            channel: "email",
-            status: "skipped",
-            error_message: "Missing Resend env vars.",
-          });
-        } else {
-          hasConfiguredChannel = true;
-          const resend = new Resend(process.env.RESEND_API_KEY);
-          const html = buildReminderEmail({
-            title: "Reminder alert",
-            subtitle: null,
-            message: reminder.message,
-            details: [
-              { label: "Recipient", value: reminder.recipient_name || "You" },
-              { label: "Frequency", value: getFrequencyLabel(reminder) },
-              { label: "Next run", value: formatDateTimeNy(reminder.next_run_at) },
-              {
-                label: "Stop condition",
-                value:
-                  reminder.stop_condition === "proof"
-                    ? "Picture proof required"
-                    : `Stop at ${formatDateTimeNy(reminder.stop_at)}`,
-              },
-            ],
-            ctaUrl: appBaseUrl || undefined,
-            ctaLabel: "Complete the mission",
-            secondaryCtaUrl:
-              reminder.stop_condition === "proof" ? uploadUrl : undefined,
-            secondaryCtaLabel: "Upload receipt",
-          });
-          await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL,
-            to: reminder.email,
-            subject: "Reminder Rocket",
-            html,
-          });
-          await supabase.from("reminder_attempts").insert({
-            reminder_id: reminder.id,
-            channel: "email",
-            status: "sent",
-          });
-          delivered = true;
-        }
-      } catch (error) {
+    const emailList = splitRecipients(reminder.email);
+    if (emailList.length > 0) {
+      if (!hasResend) {
         await supabase.from("reminder_attempts").insert({
           reminder_id: reminder.id,
           channel: "email",
-          status: "failed",
-          error_message: String(error),
+          status: "skipped",
+          error_message: "Missing Resend env vars.",
         });
+      } else {
+        hasConfiguredChannel = true;
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        const html = buildReminderEmail({
+          title: "Reminder alert",
+          subtitle: null,
+          message: reminder.message,
+          details: [
+            { label: "Recipient", value: reminder.recipient_name || "You" },
+            { label: "Frequency", value: getFrequencyLabel(reminder) },
+            { label: "Next run", value: formatDateTimeNy(reminder.next_run_at) },
+            {
+              label: "Stop condition",
+              value:
+                reminder.stop_condition === "proof"
+                  ? "Picture proof required"
+                  : `Stop at ${formatDateTimeNy(reminder.stop_at)}`,
+            },
+          ],
+          ctaUrl: appBaseUrl || undefined,
+          ctaLabel: "Complete the mission",
+          secondaryCtaUrl:
+            reminder.stop_condition === "proof" ? uploadUrl : undefined,
+          secondaryCtaLabel: "Upload receipt",
+        });
+        for (const recipient of emailList) {
+          try {
+            await resend.emails.send({
+              from: process.env.RESEND_FROM_EMAIL,
+              to: recipient,
+              subject: "Reminder Rocket",
+              html,
+            });
+            await supabase.from("reminder_attempts").insert({
+              reminder_id: reminder.id,
+              channel: "email",
+              status: "sent",
+              error_message: `to ${recipient}`,
+            });
+            delivered = true;
+          } catch (error) {
+            await supabase.from("reminder_attempts").insert({
+              reminder_id: reminder.id,
+              channel: "email",
+              status: "failed",
+              error_message: `${recipient}: ${String(error)}`,
+            });
+          }
+        }
       }
     }
 
