@@ -3,11 +3,16 @@ import { Resend } from "resend";
 import { buildReminderEmail } from "../../../lib/emailTemplate";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
 import { getSmsProvider } from "../../../lib/smsProvider";
+import { getWhatsAppProvider } from "../../../lib/whatsappProvider";
 import { getSupabaseAuthClientForRequest } from "../../../lib/supabaseRouteAuth";
 import { applyReminderListFilter } from "../../../lib/reminderAccess";
 import { getServerAuthUser } from "../../../lib/serverAuthUser";
 import { formatDateTimeNy } from "../../../lib/nyTime";
 import { formatZodErrors, reminderSchema } from "../../../lib/validation";
+import {
+  uploadReminderMedia,
+  validateReminderMediaFile,
+} from "../../../lib/reminderMedia";
 
 const FREQUENCY_INTERVALS_MS = {
   hourly: 60 * 60 * 1000,
@@ -105,6 +110,139 @@ async function sendConfirmationEmail(reminder) {
   return { status: "sent" };
 }
 
+function emptyField(value) {
+  if (value == null) {
+    return null;
+  }
+  const trimmed = String(value).trim();
+  return trimmed.length === 0 ? null : trimmed;
+}
+
+function parseReminderPayload(raw) {
+  return {
+    client_id: emptyField(raw.client_id),
+    message: emptyField(raw.message),
+    image_path: emptyField(raw.image_path),
+    voice_path: emptyField(raw.voice_path),
+    recipient_name: emptyField(raw.recipient_name),
+    phone: emptyField(raw.phone),
+    whatsapp: emptyField(raw.whatsapp),
+    email: emptyField(raw.email),
+    frequency_type: raw.frequency_type,
+    frequency_value:
+      raw.frequency_value === "" || raw.frequency_value == null
+        ? null
+        : Number(raw.frequency_value),
+    frequency_unit: emptyField(raw.frequency_unit),
+    start_time: raw.start_time,
+    stop_condition: raw.stop_condition,
+    stop_at: emptyField(raw.stop_at),
+    telegram_chat_id:
+      raw.telegram_chat_id === "" || raw.telegram_chat_id == null
+        ? null
+        : Number(raw.telegram_chat_id),
+  };
+}
+
+async function parseReminderRequest(request) {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const payload = parseReminderPayload({
+      client_id: formData.get("client_id"),
+      message: formData.get("message"),
+      recipient_name: formData.get("recipient_name"),
+      phone: formData.get("phone"),
+      whatsapp: formData.get("whatsapp"),
+      email: formData.get("email"),
+      frequency_type: formData.get("frequency_type"),
+      frequency_value: formData.get("frequency_value"),
+      frequency_unit: formData.get("frequency_unit"),
+      start_time: formData.get("start_time"),
+      stop_condition: formData.get("stop_condition"),
+      stop_at: formData.get("stop_at"),
+      telegram_chat_id: formData.get("telegram_chat_id"),
+    });
+    const imageFile = formData.get("image");
+    const voiceFile = formData.get("voice");
+    return {
+      payload,
+      imageFile:
+        imageFile && typeof imageFile !== "string" ? imageFile : null,
+      voiceFile:
+        voiceFile && typeof voiceFile !== "string" ? voiceFile : null,
+    };
+  }
+
+  let payload = null;
+  try {
+    payload = await request.json();
+  } catch (error) {
+    throw new Error("Invalid JSON payload.");
+  }
+  return { payload: parseReminderPayload(payload), imageFile: null, voiceFile: null };
+}
+
+async function attachReminderMedia(supabase, reminder, { imageFile, voiceFile }) {
+  let imagePath = null;
+  let voicePath = null;
+  const mediaErrors = {};
+
+  if (imageFile) {
+    const imageValidation = validateReminderMediaFile(imageFile, "image");
+    if (imageValidation) {
+      mediaErrors.image = imageValidation;
+    } else {
+      imagePath = await uploadReminderMedia(supabase, {
+        reminderId: reminder.id,
+        file: imageFile,
+        kind: "image",
+        filename: imageFile.name,
+      });
+    }
+  }
+
+  if (voiceFile) {
+    const voiceValidation = validateReminderMediaFile(voiceFile, "voice");
+    if (voiceValidation) {
+      mediaErrors.voice = voiceValidation;
+    } else {
+      voicePath = await uploadReminderMedia(supabase, {
+        reminderId: reminder.id,
+        file: voiceFile,
+        kind: "voice",
+        filename: voiceFile.name || "voice-note.webm",
+      });
+    }
+  }
+
+  if (Object.keys(mediaErrors).length > 0) {
+    await supabase.from("reminders").delete().eq("id", reminder.id);
+    return { errors: mediaErrors };
+  }
+
+  if (!imagePath && !voicePath) {
+    return { reminder };
+  }
+
+  const { data, error } = await supabase
+    .from("reminders")
+    .update({
+      image_path: imagePath,
+      voice_path: voicePath,
+    })
+    .eq("id", reminder.id)
+    .select("*")
+    .single();
+
+  if (error) {
+    await supabase.from("reminders").delete().eq("id", reminder.id);
+    throw new Error(error.message);
+  }
+
+  return { reminder: data };
+}
+
 export async function GET(request) {
   try {
     const authClient = getSupabaseAuthClientForRequest(request);
@@ -171,16 +309,29 @@ export async function POST(request) {
     }
 
     let payload = null;
+    let imageFile = null;
+    let voiceFile = null;
     try {
-      payload = await request.json();
+      const parsedRequest = await parseReminderRequest(request);
+      payload = parsedRequest.payload;
+      imageFile = parsedRequest.imageFile;
+      voiceFile = parsedRequest.voiceFile;
     } catch (error) {
       return NextResponse.json(
-        { error: "Invalid JSON payload." },
+        { error: error instanceof Error ? error.message : "Invalid payload." },
         { status: 400 }
       );
     }
 
-    const parsed = reminderSchema.safeParse(payload);
+    const validationPayload = { ...payload };
+    if (imageFile) {
+      validationPayload.image_path = "pending";
+    }
+    if (voiceFile) {
+      validationPayload.voice_path = "pending";
+    }
+
+    const parsed = reminderSchema.safeParse(validationPayload);
     if (!parsed.success) {
       return NextResponse.json(
         { errors: formatZodErrors(parsed.error) },
@@ -243,6 +394,18 @@ export async function POST(request) {
       }
     }
 
+    if (data.whatsapp) {
+      const whatsAppProvider = getWhatsAppProvider();
+      if (!whatsAppProvider.isConfigured()) {
+        return NextResponse.json(
+          {
+            errors: { whatsapp: whatsAppProvider.missingEnvHint },
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // When start_time is now (or earlier), fire on the next cron tick instead of waiting a full interval.
     // Scheduled future starts continue to wait until that exact time.
     const nextRunAt = startTime <= now ? now : startTime;
@@ -251,6 +414,7 @@ export async function POST(request) {
       message: data.message,
       recipient_name: data.recipient_name,
       phone: data.phone,
+      whatsapp: data.whatsapp,
       email: data.email,
       frequency_type: data.frequency_type,
       frequency_value:
@@ -308,6 +472,33 @@ export async function POST(request) {
     if (error) {
       console.error("Reminders POST error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (imageFile || voiceFile) {
+      try {
+        const mediaResult = await attachReminderMedia(supabase, reminder, {
+          imageFile,
+          voiceFile,
+        });
+        if (mediaResult.errors) {
+          return NextResponse.json(
+            { errors: mediaResult.errors },
+            { status: 400 }
+          );
+        }
+        reminder = mediaResult.reminder;
+      } catch (mediaError) {
+        console.error("Reminders media upload error:", mediaError);
+        return NextResponse.json(
+          {
+            error:
+              mediaError instanceof Error
+                ? mediaError.message
+                : "Unable to upload reminder media.",
+          },
+          { status: 500 }
+        );
+      }
     }
 
     let confirmation = null;

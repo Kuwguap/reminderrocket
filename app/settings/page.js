@@ -19,6 +19,7 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [testEmail, setTestEmail] = useState("");
   const [testPhone, setTestPhone] = useState("");
+  const [testWhatsApp, setTestWhatsApp] = useState("");
   const [testResult, setTestResult] = useState(null);
   const [isTesting, setIsTesting] = useState(false);
 
@@ -110,7 +111,11 @@ export default function SettingsPage() {
       const response = await fetch("/api/settings/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: testEmail, phone: testPhone }),
+        body: JSON.stringify({
+          email: testEmail,
+          phone: testPhone,
+          whatsapp: testWhatsApp,
+        }),
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -284,14 +289,28 @@ export default function SettingsPage() {
               <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-orange-200 px-4 py-3">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">
-                    Vonage SMS
+                    SMS ({health?.summary?.smsProvider ?? "—"})
                   </p>
                   <p className="text-xs text-slate-500">
-                    API key + API secret + sender (number or alphanumeric)
+                    Vonage or GoHighLevel A2P number
                   </p>
                 </div>
-                <span className={pillClass(health?.summary?.vonage)}>
-                  {health?.summary?.vonage ? "Ready" : "Missing env vars"}
+                <span className={pillClass(health?.summary?.sms)}>
+                  {health?.summary?.sms ? "Ready" : "Missing env vars"}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-orange-200 px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    WhatsApp (GoHighLevel)
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    HIGHLEVEL_PIT_TOKEN + connected WhatsApp Business
+                  </p>
+                </div>
+                <span className={pillClass(health?.summary?.whatsapp)}>
+                  {health?.summary?.whatsapp ? "Ready" : "Missing env vars"}
                 </span>
               </div>
             </div>
@@ -306,7 +325,7 @@ export default function SettingsPage() {
               </h2>
               <p className="mt-1 text-sm text-slate-600">
                 View and stop running reminders. Each card lists where alerts are
-                sent (email, phone, or Telegram chat ID).
+                sent (email, phone, WhatsApp, or Telegram chat ID).
               </p>
             </div>
             <button
@@ -364,7 +383,7 @@ export default function SettingsPage() {
                           </ul>
                         ) : (
                           <p className="text-xs text-amber-700">
-                            No email, phone, or Telegram chat on this reminder.
+                            No email, phone, WhatsApp, or Telegram chat on this reminder.
                           </p>
                         )}
                       </div>
@@ -393,7 +412,7 @@ export default function SettingsPage() {
         <section className="mt-6 rounded-3xl border border-orange-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Self-test</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Send a test email or a direct SMS via Vonage.
+            Send a test email, SMS, or WhatsApp message.
           </p>
 
           <form className="mt-4 grid gap-4" onSubmit={runTest}>
@@ -413,6 +432,16 @@ export default function SettingsPage() {
                 type="tel"
                 value={testPhone}
                 onChange={(event) => setTestPhone(event.target.value)}
+                placeholder="+1 555 123 4567"
+                className="w-full rounded-2xl border border-orange-200 px-4 py-3 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium text-slate-700">
+              Test WhatsApp (optional)
+              <input
+                type="tel"
+                value={testWhatsApp}
+                onChange={(event) => setTestWhatsApp(event.target.value)}
                 placeholder="+1 555 123 4567"
                 className="w-full rounded-2xl border border-orange-200 px-4 py-3 text-sm text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
               />

@@ -19,6 +19,7 @@ import {
 } from "../lib/nyTime";
 import { getNotificationDestinationRows } from "../lib/notificationDestinations";
 import { formatZodErrors, reminderSchema } from "../lib/validation";
+import ReminderMessageInput from "../components/ReminderMessageInput";
 
 const modalDismissXClassName =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg leading-none text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500";
@@ -68,7 +69,10 @@ export default function Home() {
   const [annoyMode, setAnnoyMode] = useState(false);
   const [startTiming, setStartTiming] = useState("now");
   const [message, setMessage] = useState("");
+  const [imageFile, setImageFile] = useState(null);
+  const [voiceBlob, setVoiceBlob] = useState(null);
   const [phone, setPhone] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
   const [telegramChatId, setTelegramChatId] = useState("");
   const [customFrequencyValue, setCustomFrequencyValue] = useState("");
@@ -377,6 +381,28 @@ export default function Home() {
     window.localStorage.setItem("rr_phone", raw);
   }, [phone]);
 
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const stored = window.localStorage.getItem("rr_whatsapp");
+    if (!stored) {
+      return;
+    }
+    setWhatsapp((prev) => (prev.trim() === "" ? stored : prev));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const raw = whatsapp.trim();
+    if (raw === "") {
+      return;
+    }
+    window.localStorage.setItem("rr_whatsapp", raw);
+  }, [whatsapp]);
+
   useEffect(() => {
     if (!supabase || !user) {
       return;
@@ -438,6 +464,7 @@ export default function Home() {
       message: message.trim(),
       recipient_name: "You",
       phone,
+      whatsapp,
       email,
       telegram_chat_id:
         telegramIdToSend != null && Number.isFinite(telegramIdToSend)
@@ -453,7 +480,15 @@ export default function Home() {
       stop_at: stopTime ? stopTime.toISOString() : null,
     };
 
-    const parsed = reminderSchema.safeParse(payload);
+    const validationPayload = { ...payload };
+    if (imageFile) {
+      validationPayload.image_path = "pending";
+    }
+    if (voiceBlob) {
+      validationPayload.voice_path = "pending";
+    }
+
+    const parsed = reminderSchema.safeParse(validationPayload);
     if (!parsed.success) {
       setFormErrors(formatZodErrors(parsed.error));
       return;
@@ -461,15 +496,45 @@ export default function Home() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/reminders", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify(parsed.data),
-      });
+      const useMultipart = Boolean(imageFile || voiceBlob);
+      let response;
+      if (useMultipart) {
+        const formData = new FormData();
+        Object.entries(parsed.data).forEach(([key, value]) => {
+          if (value == null || value === "pending") {
+            return;
+          }
+          formData.append(key, String(value));
+        });
+        if (imageFile) {
+          formData.append("image", imageFile, imageFile.name || "reminder.jpg");
+        }
+        if (voiceBlob) {
+          formData.append(
+            "voice",
+            voiceBlob,
+            voiceBlob.type.includes("ogg") ? "voice-note.ogg" : "voice-note.webm"
+          );
+        }
+        response = await fetch("/api/reminders", {
+          method: "POST",
+          credentials: "include",
+          headers: accessToken
+            ? { Authorization: `Bearer ${accessToken}` }
+            : undefined,
+          body: formData,
+        });
+      } else {
+        response = await fetch("/api/reminders", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          body: JSON.stringify(parsed.data),
+        });
+      }
       const rawText = await response.text();
       let responseBody = null;
       try {
@@ -493,6 +558,8 @@ export default function Home() {
 
       setSubmitSuccess("");
       setMessage("");
+      setImageFile(null);
+      setVoiceBlob(null);
       setFrequency("hourly");
       setCustomFrequencyValue("");
       setCustomFrequencyUnit("minutes");
@@ -830,17 +897,15 @@ export default function Home() {
                 <p className="text-center text-[12px] font-black uppercase tracking-[0.2em] text-orange-600">
                   Step 1 - Remind Me
                 </p>
-                <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
-                  <span className="sr-only">Reminder message</span>
-                  <textarea
-                    rows={2}
-                    placeholder="Remind me to..."
-                    value={message}
-                    onChange={(event) => setMessage(event.target.value)}
-                    className="w-full resize-none rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                  {renderError("message")}
-                </label>
+                <ReminderMessageInput
+                  message={message}
+                  onMessageChange={setMessage}
+                  imageFile={imageFile}
+                  onImageFileChange={setImageFile}
+                  voiceBlob={voiceBlob}
+                  onVoiceBlobChange={setVoiceBlob}
+                  error={formErrors.message}
+                />
               </div>
 
               <div className="grid gap-[6px] rounded-2xl border border-orange-200 bg-orange-50/40 px-[10px] py-[10px]">
@@ -1039,6 +1104,22 @@ export default function Home() {
                   </label>
 
                   <label className="grid gap-[3px] text-[11px] font-medium text-slate-700">
+                    WhatsApp Rocket
+                    <input
+                      type="text"
+                      inputMode="tel"
+                      placeholder="555-301-3737, 551-374-0027"
+                      value={whatsapp}
+                      onChange={(event) => setWhatsapp(event.target.value)}
+                      className="w-full rounded-2xl border border-orange-200 bg-white px-[10px] py-[3px] text-[13px] text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                    <span className="text-[10px] font-normal text-slate-500">
+                      Separate multiple WhatsApp numbers with commas.
+                    </span>
+                    {renderError("whatsapp")}
+                  </label>
+
+                  <label className="grid gap-[3px] text-[11px] font-medium text-slate-700 md:col-span-2">
                     Email Rocket
                     <input
                       type="text"
@@ -1260,8 +1341,24 @@ export default function Home() {
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-1">
                           <p className="text-sm font-semibold text-slate-900">
-                            {reminder.message}
+                            {reminder.message ||
+                              (reminder.image_path && reminder.voice_path
+                                ? "Image + voice reminder"
+                                : reminder.image_path
+                                  ? "Image reminder"
+                                  : reminder.voice_path
+                                    ? "Voice note reminder"
+                                    : "Reminder")}
                           </p>
+                          {reminder.image_path || reminder.voice_path ? (
+                            <p className="text-[10px] text-slate-500">
+                              {reminder.image_path ? "Includes image" : null}
+                              {reminder.image_path && reminder.voice_path
+                                ? " · "
+                                : null}
+                              {reminder.voice_path ? "Includes voice note" : null}
+                            </p>
+                          ) : null}
                           <p className="text-xs text-slate-500">
                             Recipient: {reminder.recipient_name || "Recipient"}
                           </p>
@@ -1282,7 +1379,7 @@ export default function Home() {
                               </ul>
                             ) : (
                               <p className="text-xs text-amber-700">
-                                No email, phone, or Telegram on this reminder.
+                                No email, phone, WhatsApp, or Telegram on this reminder.
                               </p>
                             )}
                           </div>

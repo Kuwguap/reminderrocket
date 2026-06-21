@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "../../../../lib/supabaseServer";
 import { getSmsProvider } from "../../../../lib/smsProvider";
+import { getWhatsAppProvider } from "../../../../lib/whatsappProvider";
 
 function hasValue(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -13,6 +14,7 @@ export async function GET() {
     hasValue(process.env.VONAGE_FROM);
 
   const smsProvider = getSmsProvider();
+  const whatsAppProvider = getWhatsAppProvider();
 
   const envStatus = {
     supabaseUrl: hasValue(process.env.NEXT_PUBLIC_SUPABASE_URL),
@@ -42,6 +44,7 @@ export async function GET() {
     highlevel: envStatus.highlevelToken && envStatus.highlevelLocationId,
     smsProvider: smsProvider.provider,
     sms: smsProvider.isConfigured(),
+    whatsapp: whatsAppProvider.isConfigured(),
   };
 
   let supabaseError = null;

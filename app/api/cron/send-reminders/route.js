@@ -12,10 +12,19 @@ import {
 } from "../../../../lib/nyTime";
 import { pickTwoRandomQuotes } from "../../../../lib/reminderQuotes";
 import { getSmsProvider } from "../../../../lib/smsProvider";
-import { sendTelegramMessage } from "../../../../lib/telegramNotify";
+import { getWhatsAppProvider } from "../../../../lib/whatsappProvider";
 import { buildStopUrl } from "../../../../lib/stopToken";
 import { getAnnoyPhrase } from "../../../../lib/smsPhrases";
 import { splitRecipients } from "../../../../lib/recipientList";
+import {
+  appendMediaLinksToText,
+  createReminderMediaSignedUrl,
+} from "../../../../lib/reminderMedia";
+import {
+  sendTelegramAudio,
+  sendTelegramMessage,
+  sendTelegramPhoto,
+} from "../../../../lib/telegramNotify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,6 +82,19 @@ function buildUploadUrl(reminder, appBaseUrl) {
   return url.toString();
 }
 
+function reminderMessageText(reminder) {
+  if (reminder.message?.trim()) {
+    return reminder.message.trim();
+  }
+  if (reminder.image_path) {
+    return "Image reminder";
+  }
+  if (reminder.voice_path) {
+    return "Voice note reminder";
+  }
+  return "Reminder";
+}
+
 const TELEGRAM_DIVIDER = "━━━━━━━━━━━━━━━";
 
 /**
@@ -81,6 +103,7 @@ const TELEGRAM_DIVIDER = "━━━━━━━━━━━━━━━";
  * @returns {{ body: string, replyMarkup: object | undefined }}
  */
 function buildTelegramReminderMessage(reminder, { now, intervalMs, stopUrl }) {
+  const messageText = reminderMessageText(reminder);
   const [quote1, quote2] = pickTwoRandomQuotes();
   const nextLaunchShort = formatTimeShortNy(
     new Date(now.getTime() + intervalMs).toISOString()
@@ -93,7 +116,7 @@ function buildTelegramReminderMessage(reminder, { now, intervalMs, stopUrl }) {
       "    ⏱️TIME IS TICKING",
       "",
       "📋 Mission Reminder:",
-      reminder.message ?? "",
+      messageText,
       "",
       "⏳ Countdown Remaining:",
       formatHmsCountdown(countdownMs),
@@ -178,6 +201,8 @@ export async function GET(request) {
     Boolean(process.env.RESEND_FROM_EMAIL);
   const smsProvider = getSmsProvider();
   const hasSms = smsProvider.isConfigured();
+  const whatsAppProvider = getWhatsAppProvider();
+  const hasWhatsApp = whatsAppProvider.isConfigured();
   const appBaseUrl = process.env.APP_BASE_URL || "";
   const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -211,9 +236,11 @@ export async function GET(request) {
 
     const annoyChannel = reminder.phone
       ? "sms"
-      : reminder.email
-        ? "email"
-        : "telegram";
+      : reminder.whatsapp
+        ? "whatsapp"
+        : reminder.email
+          ? "email"
+          : "telegram";
     const annoyMeta =
       reminder.frequency_type === "annoy"
         ? await getAnnoyMeta(reminder.id, annoyChannel, supabase)
@@ -234,17 +261,27 @@ export async function GET(request) {
 
     const uploadUrl = buildUploadUrl(reminder, appBaseUrl);
     const stopUrl = buildStopUrl(reminder.id, appBaseUrl);
+    const messageText = reminderMessageText(reminder);
+    const imageUrl = await createReminderMediaSignedUrl(
+      supabase,
+      reminder.image_path
+    );
+    const voiceUrl = await createReminderMediaSignedUrl(
+      supabase,
+      reminder.voice_path
+    );
     const smsCore = annoyMeta?.tone
-      ? `${annoyMeta.tone}\n${reminder.message}`
-      : reminder.message;
+      ? `${annoyMeta.tone}\n${messageText}`
+      : messageText;
     // Proof reminders surface the upload link (mirrors the email CTA);
     // everything else gets a one-tap Stop link.
-    let smsMessage = smsCore;
+    let channelMessage = smsCore;
     if (reminder.stop_condition === "proof" && uploadUrl) {
-      smsMessage += `\nUpload proof: ${uploadUrl}`;
+      channelMessage += `\nUpload proof: ${uploadUrl}`;
     } else if (reminder.stop_condition !== "proof" && stopUrl) {
-      smsMessage += `\nStop: ${stopUrl}`;
+      channelMessage += `\nStop: ${stopUrl}`;
     }
+    channelMessage = appendMediaLinksToText(channelMessage, { imageUrl, voiceUrl });
 
     const phoneList = splitRecipients(reminder.phone);
     if (phoneList.length > 0) {
@@ -259,7 +296,7 @@ export async function GET(request) {
         hasConfiguredChannel = true;
         for (const phone of phoneList) {
           try {
-            await smsProvider.send({ to: phone, body: smsMessage });
+            await smsProvider.send({ to: phone, body: channelMessage });
             await supabase.from("reminder_attempts").insert({
               reminder_id: reminder.id,
               channel: "sms",
@@ -279,6 +316,39 @@ export async function GET(request) {
       }
     }
 
+    const whatsAppList = splitRecipients(reminder.whatsapp);
+    if (whatsAppList.length > 0) {
+      if (!hasWhatsApp) {
+        await supabase.from("reminder_attempts").insert({
+          reminder_id: reminder.id,
+          channel: "whatsapp",
+          status: "skipped",
+          error_message: "Missing GoHighLevel WhatsApp configuration.",
+        });
+      } else {
+        hasConfiguredChannel = true;
+        for (const number of whatsAppList) {
+          try {
+            await whatsAppProvider.send({ to: number, body: channelMessage });
+            await supabase.from("reminder_attempts").insert({
+              reminder_id: reminder.id,
+              channel: "whatsapp",
+              status: "sent",
+              error_message: `to ${number}`,
+            });
+            delivered = true;
+          } catch (error) {
+            await supabase.from("reminder_attempts").insert({
+              reminder_id: reminder.id,
+              channel: "whatsapp",
+              status: "failed",
+              error_message: `${number}: ${String(error)}`,
+            });
+          }
+        }
+      }
+    }
+
     const emailList = splitRecipients(reminder.email);
     if (emailList.length > 0) {
       if (!hasResend) {
@@ -291,22 +361,29 @@ export async function GET(request) {
       } else {
         hasConfiguredChannel = true;
         const resend = new Resend(process.env.RESEND_API_KEY);
+        const emailDetails = [
+          { label: "Recipient", value: reminder.recipient_name || "You" },
+          { label: "Frequency", value: getFrequencyLabel(reminder) },
+          { label: "Next run", value: formatDateTimeNy(reminder.next_run_at) },
+          {
+            label: "Stop condition",
+            value:
+              reminder.stop_condition === "proof"
+                ? "Picture proof required"
+                : `Stop at ${formatDateTimeNy(reminder.stop_at)}`,
+          },
+        ];
+        if (imageUrl) {
+          emailDetails.push({ label: "Image", value: imageUrl });
+        }
+        if (voiceUrl) {
+          emailDetails.push({ label: "Voice note", value: voiceUrl });
+        }
         const html = buildReminderEmail({
           title: "Reminder alert",
           subtitle: null,
-          message: reminder.message,
-          details: [
-            { label: "Recipient", value: reminder.recipient_name || "You" },
-            { label: "Frequency", value: getFrequencyLabel(reminder) },
-            { label: "Next run", value: formatDateTimeNy(reminder.next_run_at) },
-            {
-              label: "Stop condition",
-              value:
-                reminder.stop_condition === "proof"
-                  ? "Picture proof required"
-                  : `Stop at ${formatDateTimeNy(reminder.stop_at)}`,
-            },
-          ],
+          message: messageText,
+          details: emailDetails,
           ctaUrl: appBaseUrl || undefined,
           ctaLabel: "Complete the mission",
           secondaryCtaUrl:
@@ -356,12 +433,37 @@ export async function GET(request) {
             { now, intervalMs, stopUrl }
           );
 
-          const tgResult = await sendTelegramMessage(
-            telegramBotToken,
-            Number(reminder.telegram_chat_id),
-            tgBody,
-            { replyMarkup }
-          );
+          let tgResult = { ok: true };
+          if (imageUrl) {
+            tgResult = await sendTelegramPhoto(
+              telegramBotToken,
+              Number(reminder.telegram_chat_id),
+              imageUrl,
+              { caption: tgBody, replyMarkup }
+            );
+            if (tgResult.ok && voiceUrl) {
+              tgResult = await sendTelegramAudio(
+                telegramBotToken,
+                Number(reminder.telegram_chat_id),
+                voiceUrl,
+                { caption: "Voice note" }
+              );
+            }
+          } else if (voiceUrl) {
+            tgResult = await sendTelegramAudio(
+              telegramBotToken,
+              Number(reminder.telegram_chat_id),
+              voiceUrl,
+              { caption: tgBody, replyMarkup }
+            );
+          } else {
+            tgResult = await sendTelegramMessage(
+              telegramBotToken,
+              Number(reminder.telegram_chat_id),
+              tgBody,
+              { replyMarkup }
+            );
+          }
           if (!tgResult.ok) {
             await supabase.from("reminder_attempts").insert({
               reminder_id: reminder.id,

@@ -80,6 +80,7 @@ export async function GET(request) {
         "recipient_name",
         "message",
         "phone",
+        "whatsapp",
         "email",
         "telegram_chat_id",
         "frequency_type",

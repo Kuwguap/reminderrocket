@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { buildReminderEmail } from "../../../../lib/emailTemplate";
 import { getSmsProvider } from "../../../../lib/smsProvider";
+import { getWhatsAppProvider } from "../../../../lib/whatsappProvider";
 
 function hasValue(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -20,10 +21,12 @@ export async function POST(request) {
 
   const email = typeof payload?.email === "string" ? payload.email.trim() : "";
   const phone = typeof payload?.phone === "string" ? payload.phone.trim() : "";
+  const whatsapp =
+    typeof payload?.whatsapp === "string" ? payload.whatsapp.trim() : "";
 
-  if (!email && !phone) {
+  if (!email && !phone && !whatsapp) {
     return NextResponse.json(
-      { error: "Provide a test email or phone number." },
+      { error: "Provide a test email, phone number, or WhatsApp number." },
       { status: 400 }
     );
   }
@@ -85,6 +88,30 @@ export async function POST(request) {
           status: "failed",
           provider: smsProvider.provider,
           error: error instanceof Error ? error.message : "SMS failed.",
+        };
+      }
+    }
+  }
+
+  if (whatsapp) {
+    const whatsAppProvider = getWhatsAppProvider();
+    if (!whatsAppProvider.isConfigured()) {
+      results.whatsapp = {
+        status: "skipped",
+        error: whatsAppProvider.missingEnvHint,
+      };
+    } else {
+      try {
+        await whatsAppProvider.send({
+          to: whatsapp,
+          body: "Reminder Rocket test WhatsApp",
+        });
+        results.whatsapp = { status: "sent", provider: whatsAppProvider.provider };
+      } catch (error) {
+        results.whatsapp = {
+          status: "failed",
+          provider: whatsAppProvider.provider,
+          error: error instanceof Error ? error.message : "WhatsApp failed.",
         };
       }
     }
