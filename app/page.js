@@ -510,11 +510,7 @@ export default function Home() {
           formData.append("image", imageFile, imageFile.name || "reminder.jpg");
         }
         if (voiceBlob) {
-          formData.append(
-            "voice",
-            voiceBlob,
-            voiceBlob.type.includes("ogg") ? "voice-note.ogg" : "voice-note.webm"
-          );
+          formData.append("voice", voiceBlob, "voice-note.mp3");
         }
         response = await fetch("/api/reminders", {
           method: "POST",

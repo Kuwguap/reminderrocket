@@ -7,6 +7,7 @@ import {
   MAX_VOICE_SECONDS,
   MAX_MEDIA_MB,
 } from "../lib/reminderMedia";
+import { convertVoiceBlobToMp3 } from "../lib/convertVoiceToMp3";
 
 /**
  * Reminder message field with optional image upload and voice recording.
@@ -27,6 +28,7 @@ export default function ReminderMessageInput({
   const voicePreviewUrlRef = useRef(null);
 
   const [isRecording, setIsRecording] = useState(false);
+  const [isConvertingVoice, setIsConvertingVoice] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
   const [voicePreviewUrl, setVoicePreviewUrl] = useState(null);
@@ -130,7 +132,7 @@ export default function ReminderMessageInput({
           recordChunksRef.current.push(event.data);
         }
       };
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         stream.getTracks().forEach((track) => track.stop());
         if (recordTimerRef.current) {
           clearInterval(recordTimerRef.current);
@@ -145,11 +147,20 @@ export default function ReminderMessageInput({
           setMediaError("Recording was empty. Try again.");
           return;
         }
-        if (blob.size > MAX_VOICE_BYTES) {
-          setMediaError(`Voice note must be ${MAX_MEDIA_MB} MB or smaller.`);
-          return;
+
+        setIsConvertingVoice(true);
+        try {
+          const mp3Blob = await convertVoiceBlobToMp3(blob);
+          if (mp3Blob.size > MAX_VOICE_BYTES) {
+            setMediaError(`Voice note must be ${MAX_MEDIA_MB} MB or smaller.`);
+            return;
+          }
+          onVoiceBlobChange(mp3Blob);
+        } catch (error) {
+          setMediaError("Could not convert voice note to MP3. Try again.");
+        } finally {
+          setIsConvertingVoice(false);
         }
-        onVoiceBlobChange(blob);
       };
 
       mediaRecorderRef.current = recorder;
@@ -202,7 +213,7 @@ export default function ReminderMessageInput({
           >
             Upload Image
           </button>
-          {!isRecording ? (
+          {!isRecording && !isConvertingVoice ? (
             <button
               type="button"
               onClick={startRecording}
@@ -210,7 +221,7 @@ export default function ReminderMessageInput({
             >
               Record Voice
             </button>
-          ) : (
+          ) : isRecording ? (
             <button
               type="button"
               onClick={stopRecording}
@@ -218,6 +229,10 @@ export default function ReminderMessageInput({
             >
               Stop ({recordSeconds}s)
             </button>
+          ) : (
+            <span className="text-[10px] font-semibold text-slate-500">
+              Converting to MP3...
+            </span>
           )}
         </div>
       </div>
@@ -246,7 +261,7 @@ export default function ReminderMessageInput({
 
       {voicePreviewUrl ? (
         <div className="rounded-2xl border border-orange-100 bg-white px-[10px] py-[8px]">
-          <p className="text-[10px] font-semibold text-slate-700">Voice note attached</p>
+          <p className="text-[10px] font-semibold text-slate-700">Voice note attached (MP3)</p>
           <audio controls src={voicePreviewUrl} className="mt-1 w-full" />
           <button
             type="button"
