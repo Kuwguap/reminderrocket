@@ -157,6 +157,7 @@ export default function ReminderMessageInput({
           }
           onVoiceBlobChange(mp3Blob);
         } catch (error) {
+          console.error("Voice MP3 conversion failed:", error);
           setMediaError("Could not convert voice note to MP3. Try again.");
         } finally {
           setIsConvertingVoice(false);

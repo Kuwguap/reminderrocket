@@ -1358,6 +1358,9 @@ export default function Home() {
                           <p className="text-xs text-slate-500">
                             Recipient: {reminder.recipient_name || "Recipient"}
                           </p>
+                          <p className="text-xs text-slate-500">
+                            Frequency: {formatFrequency(reminder)}
+                          </p>
                           <div className="space-y-1">
                             <p className="text-xs font-semibold text-slate-700">
                               Notifications

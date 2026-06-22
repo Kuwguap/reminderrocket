@@ -18,6 +18,7 @@ import { getAnnoyPhrase } from "../../../../lib/smsPhrases";
 import { splitRecipients } from "../../../../lib/recipientList";
 import {
   appendMediaLinksToText,
+  buildReminderEmailMedia,
   createReminderMediaSignedUrl,
 } from "../../../../lib/reminderMedia";
 import {
@@ -361,6 +362,7 @@ export async function GET(request) {
       } else {
         hasConfiguredChannel = true;
         const resend = new Resend(process.env.RESEND_API_KEY);
+        const emailMedia = await buildReminderEmailMedia(supabase, reminder);
         const emailDetails = [
           { label: "Recipient", value: reminder.recipient_name || "You" },
           { label: "Frequency", value: getFrequencyLabel(reminder) },
@@ -373,17 +375,13 @@ export async function GET(request) {
                 : `Stop at ${formatDateTimeNy(reminder.stop_at)}`,
           },
         ];
-        if (imageUrl) {
-          emailDetails.push({ label: "Image", value: imageUrl });
-        }
-        if (voiceUrl) {
-          emailDetails.push({ label: "Voice note", value: voiceUrl });
-        }
         const html = buildReminderEmail({
           title: "Reminder alert",
           subtitle: null,
           message: messageText,
           details: emailDetails,
+          inlineImageCid: emailMedia.inlineImageCid,
+          inlineVoiceCid: emailMedia.inlineVoiceCid,
           ctaUrl: appBaseUrl || undefined,
           ctaLabel: "Complete the mission",
           secondaryCtaUrl:
@@ -397,6 +395,10 @@ export async function GET(request) {
               to: recipient,
               subject: "Reminder Rocket",
               html,
+              attachments:
+                emailMedia.attachments.length > 0
+                  ? emailMedia.attachments
+                  : undefined,
             });
             await supabase.from("reminder_attempts").insert({
               reminder_id: reminder.id,
